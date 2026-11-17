@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>深渊摸鱼录 · 可玩原型 v0.1</title>
+<style>
+  :root {
+    --bg: #0d0a08; --panel: #1c1410; --panel2: #241a12;
+    --parchment: #d9c79a; --parchment-dim: #a08c5f;
+    --blood: #8a1a1a; --blood-bright: #c62828; --gold: #ffd700;
+    --green: #3cff9e; --text: #d9c79a; --border: #3a2a1a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: "Microsoft YaHei", monospace; padding: 12px; }
+  h1 { color: var(--blood-bright); font-size: 22px; letter-spacing: 6px; text-align: center; text-shadow: 0 0 12px #4a0000; }
+  .sub { text-align: center; color: var(--parchment-dim); font-size: 11px; margin-bottom: 8px; }
+  #topbar { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .stat { background: var(--panel); border: 1px solid var(--border); padding: 6px 12px; border-radius: 4px; min-width: 150px; }
+  .stat .v { color: var(--gold); font-size: 16px; font-weight: bold; }
+  .stat .k { color: var(--parchment-dim); font-size: 10px; }
+  #zoneinfo { flex: 1; }
+  #zoneinfo .v { color: var(--blood-bright); }
+  canvas { display: block; width: 100%; background: #120c08; border: 1px solid var(--border); border-radius: 4px; image-rendering: pixelated; }
+  #panel { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .box { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 8px; }
+  button {
+    background: linear-gradient(180deg, #4a2a1a, #2a1810); color: var(--gold);
+    border: 1px solid #6a4a2a; padding: 8px 14px; border-radius: 4px; cursor: pointer;
+    font-family: inherit; font-size: 13px;
+  }
+  button:hover:not(:disabled) { background: linear-gradient(180deg, #6a3a1a, #3a2216); border-color: var(--gold); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  #prestigeBtn {
+    background: linear-gradient(180deg, #5a0a0a, #2a0505); border-color: #8a1a1a;
+    color: #ff6c6c; font-weight: bold; animation: pulse 1.6s infinite; width: 100%; margin-top: 6px;
+  }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 4px #8a1a1a; } 50% { box-shadow: 0 0 18px #c62828; } }
+  #affixList .chip { display: inline-block; margin: 3px; padding: 3px 8px; border-radius: 3px; font-size: 11px; border: 1px solid; }
+  #log { height: 150px; overflow-y: auto; font-size: 11px; line-height: 1.6; color: var(--green); background: #0a0806; padding: 6px; }
+  #log .ev-t2 { color: #ffd700; } #log .ev-t3 { color: #ff9e3c; } #log .ev-t4 { color: #ff3c6c; font-weight: bold; }
+  .flex1 { flex: 1; min-width: 260px; }
+  #panel2 button { min-width: 120px; }
+  #panel2 button:disabled { opacity: 0.35; }
+  .boxtitle { color: var(--parchment-dim); font-size: 11px; margin-bottom: 5px; letter-spacing: 2px; }
+  #popup {
+    position: fixed; right: 16px; bottom: 16px; width: 300px; background: var(--panel2);
+    border: 1px solid var(--gold); border-radius: 6px; padding: 12px; font-size: 12px;
+    box-shadow: 0 0 24px rgba(255, 215, 0, .15); z-index: 99;
+  }
+  #popup h3 { color: var(--gold); font-size: 13px; margin-bottom: 6px; }
+  #popup .close { float: right; cursor: pointer; color: var(--parchment-dim); }
+  .hidden { display: none !important; }
+  #ceremony { position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 100; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+  #ceremony h2 { color: var(--blood-bright); font-size: 30px; letter-spacing: 10px; text-shadow: 0 0 20px #800; margin-bottom: 12px; }
+  #ceremony p { color: var(--parchment); max-width: 480px; text-align: center; line-height: 1.8; margin-bottom: 18px; }
+</style>
+</head>
+<body>
+<h1>深 渊 摸 鱼 录</h1>
+<div class="sub">复古暗黑 · 指数爆炸 · 乐子人挂机 —— 可玩原型 v0.1（数值=设计基准，勿当最终版）</div>
+
+<div id="topbar">
+  <div class="stat"><div class="k">金币</div><div class="v" id="uiGold">0</div></div>
+  <div class="stat"><div class="k">战力 DPS</div><div class="v" id="uiDps">10</div></div>
+  <div class="stat" id="zoneinfo"><div class="k">当前区域</div><div class="v" id="uiZone">腐朽墓穴 · 第1区</div></div>
+  <div class="stat"><div class="k">转生次数</div><div class="v" id="uiPrestige">0 (全局 ×1)</div></div>
+</div>
+
+<canvas id="scene" width="900" height="300"></canvas>
+
+<div id="panel">
+  <div class="box" style="width:230px">
+    <div class="boxtitle">深 渊 升 级</div>
+    <div style="font-size:11px;color:var(--parchment-dim)">攻击 <span id="uiAtk">10</span> · 攻速 ×<span id="uiSpd">1.0</span> · 暴击 <span id="uiCrit">5%</span></div>
+    <div style="margin-top:6px"><button id="buyAtk">⚔ 攻击 Lv.<span id="uiLv">0</span> (<span id="uiCost">10</span>)</button></div>
+    <div style="margin-top:4px"><button id="buySpd">⚡ 攻速 Lv.<span id="uiSpdLv">0</span>/15 (<span id="uiSpdCost">50</span>)</button></div>
+    <div style="margin-top:4px"><button id="buyCrt">🎯 暴击 Lv.<span id="uiCrtLv">0</span>/20 (<span id="uiCrtCost">100</span>)</button></div>
+    <div style="margin-top:6px"><button id="buyMaxBtn" style="width:100%">一键买满（攻击线）</button></div>
+    <button id="prestigeBtn" class="hidden">【掀桌子重开时间线】<br>献祭一切 → 黑魂工资 +<span id="uiSoulsGain">5</span> 点</button>
+    <div id="shopPanel" class="hidden">
+      <div class="boxtitle" style="margin-top:8px">黑 魂 工 资 商 店（<span id="uiSouls">0</span> 点）</div>
+      <div style="margin-top:4px"><button id="shopTyr">暴政 ×2.5 (<span id="shopTyrCost">1</span>) Lv.<span id="shopTyrLv">0</span></button></div>
+      <div style="margin-top:4px"><button id="shopSqz">压榨·离线 ×2 (<span id="shopSqzCost">1</span>) Lv.<span id="shopSqzLv">0</span></button></div>
+      <div style="margin-top:4px"><button id="shopMad">发疯·事件 ×1.5 (<span id="shopMadCost">1</span>) Lv.<span id="shopMadLv">0</span></button></div>
+    </div>
+  </div>
+  <div class="box flex1">
+    <div class="boxtitle">装 备 词 缀（Boss 掉落，自动装备）</div>
+    <div id="affixList"><span style="font-size:11px;color:var(--parchment-dim)">空空如也。去打第一个 Boss（第10区）。</span></div>
+  </div>
+  <div class="box flex1">
+    <div class="boxtitle">深 渊 摸 鱼 实 录（挂机日志）</div>
+    <div id="log"></div>
+  </div>
+</div>
+<div id="panel2" style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+  <div class="box flex1">
+    <div class="boxtitle">主 动 技 能（热键 1/2/3）—— 站桩是可耻的</div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+      <button id="skFury">1 精神攻击 ×<span id="skFuryMult">5</span><br><span id="skFuryCd" style="font-size:10px">就绪</span></button>
+      <button id="skSlam">2 掀桌一击 <span id="skSlamSec">60</span>s DPS<br><span id="skSlamCd" style="font-size:10px">就绪</span></button>
+      <button id="skTax">3 收保护费 <span id="skTaxSec">90</span>s<br><span id="skTaxCd" style="font-size:10px">就绪</span></button>
+      <button id="tauntBtn" class="hidden" style="background:linear-gradient(180deg,#4a0a2a,#2a0518);border-color:#c62828;color:#ff9e9e;">【嘘他！】Boss破防 ×3（6s）</button>
+    </div>
+    <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
+      <button id="upFury" style="font-size:11px">升级精神攻击 ×2/级 +1s (Lv.<span id="upFuryLv">0</span>/5 · <span id="upFuryCost">?</span>)</button>
+      <button id="upSlam" style="font-size:11px">升级掀桌一击 +30s DPS (Lv.<span id="upSlamLv">0</span>/4 · <span id="upSlamCost">?</span>)</button>
+      <button id="upTax" style="font-size:11px">升级收保护费 +60s (Lv.<span id="upTaxLv">0</span>/4 · <span id="upTaxCost">?</span>)</button>
+    </div>
+  </div>
+  <div class="box flex1">
+    <div class="boxtitle">深 渊 目 标（KPI 由魔王友情赞助，拒绝扣钱只发奖金）</div>
+    <div id="objList" style="font-size:11px; line-height:1.9;"></div>
+  </div>
+</div>
+
+<div id="popup" class="hidden">
+  <span class="close" onclick="this.parentElement.classList.add('hidden')">[关闭]</span>
+  <h3 id="popupTitle"></h3>
+  <div id="popupBody"></div>
+</div>
+
+<div id="ceremony" class="hidden">
+  <h2>时 间 线 已 掀 翻</h2>
+  <p id="ceremonyText"></p>
+  <button id="ceremonyOk">接受这一切，继续摸鱼</button>
+</div>
+
+<script>
+/*__BREAK_INFINITY__*/
+</script>
+<script>
+/*__ECON__*/
+</script>
+<script type="application/json" id="affix-data">__AFFIX_JSON__</script>
+<script type="application/json" id="event-data">__EVENT_JSON__</script>
+<script>
+'use strict';
+// ============ 应用层（DOM / Canvas / 存档 / 主循环） ============
+const AFFIX = JSON.parse(document.getElementById('affix-data').textContent);
+const EVENTS = JSON.parse(document.getElementById('event-data').textContent);
+const C = ECON.CONFIG;
+const D = Decimal;
+
+// ---------- 状态 ----------
+const S = {
+  gold: new D(0), zone: 1, level: 0, prestige: 0,
+  spd: 0, crt: 0,                       // 攻速线/暴击线
+  souls: 0, shop: { tyr: 0, sqz: 0, mad: 0 },   // 黑魂工资与商店
+  maxZone: 1, allMax: 1,                // 本次转生最高区 / 史上最高区
+  affixes: [], buffs: [],
+  hp: null, hpMax: null,
+  stunUntil: 0, nextEventIn: C.eventBaseIntervalSec * 1000,
+  combo: 0, lastKillAt: 0,
+  skillAt: { fury: 0, slam: 0, tax: 0 },
+  skillLv: { fury: 0, slam: 0, tax: 0 },
+  stats: { kills: 0, bosses: 0, skillUses: 0, taunts: 0, maxCombo: 0, cdReduce: 0, tauntCdReduce: 0, claimed: [] },
+  tauntUntil: 0, tauntCdUntil: 0,
+};
+const qualityColor = {}; AFFIX.quality.forEach(q => qualityColor[q.id] = q.color);
+
+function currentBoss() { return ECON.isBoss(S.zone) ? ECON.bossName(S.zone) : null; }
+function mults() { return ECON.computeMults(S.affixes, AFFIX, currentBoss(), S.buffs, Math.pow(C.shopTyrannyMult, S.shop.tyr), Date.now(), { spdLv: S.spd }); }
+function crtP() { return ECON.critParams(S.crt); }
+function comboMult() { return Math.min(C.comboCap, 1 + S.combo * C.comboStep); }
+
+function softReset() {
+  S.gold = new D(0); S.zone = 1; S.level = 0; S.affixes = []; S.buffs = [];
+  S.spd = 0; S.crt = 0; S.maxZone = 1;
+  S.combo = 0; S.lastKillAt = 0;
+  S.hp = S.hpMax = ECON.zoneHP(S.zone); S.stunUntil = 0;
+}
+
+// ---------- 存档 ----------
+function save() {
+  localStorage.setItem('abyss_fish_v1', JSON.stringify({
+    v: 3, gold: S.gold.toString(), zone: S.zone, level: S.level, prestige: S.prestige,
+    spd: S.spd, crt: S.crt, souls: S.souls, shop: S.shop, maxZone: S.maxZone, allMax: S.allMax,
+    skillLv: S.skillLv, stats: S.stats,
+    affixes: S.affixes, buffs: S.buffs, lastSave: Date.now(),
+  }));
+}
+function load() {
+  const raw = localStorage.getItem('abyss_fish_v1');
+  softReset();
+  if (!raw) return;
+  try {
+    const d = JSON.parse(raw);
+    S.gold = new D(d.gold || 0); S.zone = d.zone || 1; S.level = d.level || 0;
+    S.prestige = d.prestige || 0; S.affixes = d.affixes || []; S.buffs = d.buffs || [];
+    // v1 存档迁移：旧 ×10 转生补偿为黑魂点数
+    if (d.v === 1) { S.souls = (d.prestige || 0) * 4; }
+    else {
+      S.spd = d.spd || 0; S.crt = d.crt || 0; S.souls = d.souls || 0;
+      S.shop = d.shop || { tyr: 0, sqz: 0, mad: 0 };
+      S.maxZone = d.maxZone || S.zone; S.allMax = d.allMax || S.maxZone;
+      if (d.v >= 3) {
+        S.skillLv = d.skillLv || S.skillLv;
+        S.stats = Object.assign(S.stats, d.stats || {});
+        S.stats.claimed = (d.stats && d.stats.claimed) || [];
+      }
+    }
+    S.hp = S.hpMax = ECON.zoneHP(S.zone);
+    const delta = (Date.now() - (d.lastSave || Date.now())) / 1000;
+    if (delta > 60) {
+      const r = ECON.simulateOffline(S, AFFIX, delta, Date.now(), Math.pow(C.shopSqueezeMult, S.shop.sqz));
+      if (r.zonesCleared > 0) {
+        showPopup('【离线战报】', [
+          `你离开了 ${Math.floor(delta / 60)} 分钟。骷髅兵们替你推掉了 ${r.zonesCleared} 区，`,
+          `赚回 ${ECON.fmt(r.goldGained)} 金币。它们申请加班费，已驳回。`,
+        ], 'ev-t2');
+      }
+    }
+  } catch (e) { console.error('读档失败，已重置', e); }
+}
+
+// ---------- 战斗 ----------
+let attackTimer = 0;
+
+function doStrike() {
+  lastStrikeAt = performance.now(); hitFlashUntil = performance.now() + 90;
+  const m = mults();
+  const boss = currentBoss();
+  const { dmg, crit } = ECON.strikeDamage(ECON.atkOf(S.level), m, Math.random, crtP());
+  let effDmg = dmg;
+  if (boss) effDmg = dmg.times(m.bossDmg).times(Date.now() < S.tauntUntil ? 3 : 1);
+  // 词缀 proc：处决
+  for (const id of S.affixes) {
+    const a = AFFIX.affixes.find(x => x.id === id); if (!a) continue;
+    for (const e of a.effects) {
+      if (e.type === 'proc' && e.effect && e.effect.kind === 'execute' && Math.random() < e.chance) {
+        if (S.hp.div(S.hpMax).toNumber() < e.effect.threshold) { effDmg = new D('1e3000'); addFloater('下岗！', '#ff3c3c', 26); }
+      }
+    }
+  }
+  const mag = effDmg.exponent;
+  let color = '#e8e0d0', size = 14;
+  if (mag >= 36) { color = '#ff3c6c'; size = 26; }        // AA+ 绯红
+  else if (mag >= 12) { color = '#ff3c3c'; size = 22; }   // T+ 血红
+  else if (mag >= 9) { color = '#ffd700'; size = 19; }    // B+ 暗金
+  else if (mag >= 6) { color = '#7CFC00'; size = 16; }    // M+ 幽绿
+  if (crit) { color = '#ffd700'; size += 6; }
+  addFloater((crit ? '暴击 ' : '') + ECON.fmt(effDmg), color, size);
+  if (mag >= 12) shake = Math.min(14, 4 + mag / 12);
+  S.hp = S.hp.minus(effDmg);
+  if (S.hp.lte(0)) kill(m);
+}
+
+function kill(m) {
+  const nowK = Date.now();
+  S.combo = (nowK - S.lastKillAt < C.comboWindowMs) ? S.combo + 1 : 1;
+  S.lastKillAt = nowK;
+  S.maxZone = Math.max(S.maxZone, S.zone); S.allMax = Math.max(S.allMax, S.maxZone);
+  S.stats.kills++; S.stats.maxCombo = Math.max(S.stats.maxCombo, S.combo);
+  if (ECON.isBoss(S.zone)) S.stats.bosses++;
+  S.gold = S.gold.plus(ECON.zoneGold(S.zone).times(m.goldGain).times(comboMult()));
+  killFx();
+  if (ECON.isBoss(S.zone)) {
+    dropAffix();
+    addLog(`[战斗] ${ECON.bossName(S.zone)} 被物理超度。临终遗言："我本可以直接躺平的……"`, '');
+  }
+  S.zone += 1;
+  S.hp = S.hpMax = ECON.zoneHP(S.zone);
+  if (ECON.isBoss(S.zone)) {
+    addLog(`[遭遇] Boss出现：${ECON.bossName(S.zone)}（第${S.zone}区）。它开始念PPT。`, 'ev-t2');
+  }
+}
+
+// ---------- 词缀掉落 ----------
+function dropAffix() {
+  const r = Math.random() * 100;
+  const q = r < 5 ? 'primal' : r < 30 ? 'ancient' : 'yellow';
+  const pool = AFFIX.affixes.filter(a => a.quality === q && a.id !== 'aff_glitch_blank');
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  if (!pick) return;
+  S.affixes.push(pick.id);
+  const qName = AFFIX.quality.find(x => x.id === q).name;
+  showPopup(`【掉落】${qName}品质装备！`, [`词缀：${pick.text}`, q === 'primal' ? '（全服广播：这狗屎运建议买彩票）' : ''], 'ev-t3');
+  addLog(`[掉落] ${qName} · ${pick.text}`, 'ev-t3');
+}
+
+// ---------- 抽象事件 ----------
+function fireEvent() {
+  const ev = ECON.pickEvent(EVENTS, Math.random);
+  const m = mults();
+  let body = [];
+  for (const line of ev.lines) {
+    let s = line.replace('{gold}', ECON.fmt(ECON.zoneGold(S.zone).times(ev.reward.mult || 1).times(m.goldGain)))
+               .replace('{mult}', ECON.fmt(new D(ev.reward.mult || 1)));
+    body.push(s);
+  }
+  const mad = Math.pow(C.shopMadnessMult, S.shop.mad);
+  const rw = ev.reward;
+  if (rw.kind === 'goldMult') {
+    S.gold = S.gold.plus(ECON.zoneGold(S.zone).times(rw.mult * mad).times(m.goldGain));
+  } else if (rw.kind === 'buff') {
+    S.buffs.push({ zone: rw.zone, mult: rw.mult, until: rw.durationSec > 100000 ? 0 : Date.now() + rw.durationSec * 1000 });
+  }
+  addLog(body.join(' '), 'ev-t' + ev.tier.slice(1));
+  showPopup(`【${EVENTS.tiers.find(t => t.id === ev.tier).label}】${ev.id === 'evt_table_flip_rehearsal' ? '传说事件！' : '深渊摸鱼实录'}`, body, 'ev-t' + ev.tier.slice(1));
+}
+
+// ---------- 日志与弹窗 ----------
+const logEl = document.getElementById('log');
+function addLog(text, cls) {
+  const div = document.createElement('div');
+  div.className = cls || '';
+  div.textContent = text;
+  logEl.appendChild(div);
+  while (logEl.children.length > 40) logEl.removeChild(logEl.firstChild);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function showPopup(title, lines, cls) {
+  document.getElementById('popupTitle').textContent = title;
+  const b = document.getElementById('popupBody');
+  b.innerHTML = '';
+  lines.forEach(l => { const p = document.createElement('div'); p.textContent = l; b.appendChild(p); });
+  document.getElementById('popup').classList.remove('hidden');
+  clearTimeout(showPopup._t);
+  showPopup._t = setTimeout(() => document.getElementById('popup').classList.add('hidden'), 6000);
+}
+
+// ---------- 转生 ----------
+const CEREMONIES = [
+  '你把所有装备扔进了深渊祭坛。魔王看了看，真诚地说："你真棒。"——这句赞美化作了永久全局 ×10 的力量。',
+  '时间线不顺眼？掀了。桌子砸中魔王后脑勺，它赔了你一笔精神损失费（永久全局 ×10），并抱怨工伤流程太复杂。',
+  '角色留下一封辞职信穿越到下个时间线。HR 恶魔批了，还多发了一份遣散费（永久全局 ×10）。祝你前程似锦，前同事说。',
+];
+document.getElementById('prestigeBtn').onclick = () => {
+  const gain = ECON.prestigeSouls(S.maxZone);
+  S.souls += gain;
+  S.prestige += 1;
+  document.getElementById('ceremonyText').textContent =
+    CEREMONIES[Math.floor(Math.random() * CEREMONIES.length)] + '\n\n—— 本次掀桌结算：黑魂工资 +' + gain + ' 点（累计 ' + S.souls + ' 点）。去商店花掉它，不投资的转生是耍流氓。';
+  document.getElementById('ceremony').classList.remove('hidden');
+  softReset();
+  save();
+};
+document.getElementById('ceremonyOk').onclick = () => document.getElementById('ceremony').classList.add('hidden');
+
+// ---------- 升级 ----------
+function trackInfo(t) {
+  if (t === 'atk') return { lv: S.level, cost: ECON.costOf(S.level), max: Infinity };
+  if (t === 'spd') return { lv: S.spd, cost: ECON.spdCost(S.spd), max: C.spdMax };
+  return { lv: S.crt, cost: ECON.crtCost(S.crt), max: C.crtMax };
+}
+function buyOne(t) {
+  const info = trackInfo(t);
+  if (info.lv >= info.max) return false;
+  if (S.gold.lt(info.cost)) return false;
+  S.gold = S.gold.minus(info.cost);
+  if (t === 'atk') S.level++; else if (t === 'spd') S.spd++; else S.crt++;
+  return true;
+}
+document.getElementById('buyAtk').onclick = () => buyOne('atk');
+document.getElementById('buySpd').onclick = () => buyOne('spd');
+document.getElementById('buyCrt').onclick = () => buyOne('crt');
+document.getElementById('buyMaxBtn').onclick = () => { let n = 0; while (buyOne('atk') && n < 10000) n++; };
+document.addEventListener('keydown', e => {
+  if (e.key === '1') useSkill('fury'); else if (e.key === '2') useSkill('slam'); else if (e.key === '3') useSkill('tax');
+});
+
+// ===== 主动技能 =====
+const SKILLS = {
+  fury: { cd: 30, label: '精神攻击' },
+  slam: { cd: 45, label: '掀桌一击' },
+  tax:  { cd: 45, label: '收取保护费' },
+};
+function skillParamsOf(id) { return ECON.skillParams(id, S.skillLv[id]); }
+function effCd(id) { return SKILLS[id].cd * (1 - Math.min(0.3, S.stats.cdReduce || 0)); }
+function useSkill(id) {
+  const sk = SKILLS[id];
+  const now = Date.now();
+  if (now - S.skillAt[id] < effCd(id) * 1000) return;
+  S.skillAt[id] = now;
+  S.stats.skillUses++;
+  const m = mults();
+  if (id === 'fury') {
+    const p = skillParamsOf('fury');
+    S.buffs.push({ kind: 'global', mult: p.mult, until: now + p.dur * 1000 });
+    addLog('[技能] 精神攻击发动：全体敌人被你的精神状态吓到，全乘区 ×' + p.mult + '（' + p.dur + '秒）', 'ev-t3');
+  } else if (id === 'slam') {
+    const dps = ECON.dpsOf(ECON.atkOf(S.level), m, crtP());
+    let dmg = dps.times(skillParamsOf('slam').dpsSec);
+    if (currentBoss()) dmg = dmg.times(m.bossDmg);
+    addFloater('掀桌! ' + ECON.fmt(dmg), '#ff3c6c', 26);
+    shake = 12;
+    S.hp = S.hp.minus(dmg);
+    if (S.hp.lte(0)) kill(m);
+  } else if (id === 'tax') {
+    const g = ECON.zoneGold(S.zone).times(skillParamsOf('tax').goldSec).times(m.goldGain);
+    S.gold = S.gold.plus(g);
+    addLog('[技能] 收保护费成功：骷髅兵上交 ' + skillParamsOf('tax').goldSec + ' 秒营业额 ' + ECON.fmt(g) + ' 金币。哥布林含泪记账。', '');
+  }
+}
+function upgradeSkill(id) {
+  const lv = S.skillLv[id];
+  if (lv >= ECON.SKILL_MAX[id]) return;
+  const cost = ECON.skillCost(lv);
+  if (S.gold.lt(cost)) return;
+  S.gold = S.gold.minus(cost);
+  S.skillLv[id]++;
+  addLog('[升级] ' + SKILLS[id].label + '升至 Lv.' + S.skillLv[id] + '。技能书费用：' + ECON.fmt(cost) + ' 金币，已开发票。', 'ev-t2');
+}
+document.getElementById('upFury').onclick = () => upgradeSkill('fury');
+document.getElementById('upSlam').onclick = () => upgradeSkill('slam');
+document.getElementById('upTax').onclick = () => upgradeSkill('tax');
+document.getElementById('skFury').onclick = () => useSkill('fury');
+document.getElementById('skSlam').onclick = () => useSkill('slam');
+document.getElementById('skTax').onclick = () => useSkill('tax');
+// Boss 嘘他破防
+document.getElementById('tauntBtn').onclick = () => {
+  const now = Date.now();
+  if (now < S.tauntCdUntil || !currentBoss()) return;
+  S.tauntUntil = now + 6000;
+  S.tauntCdUntil = now + 12000 - (S.stats.tauntCdReduce || 0) * 1000;
+  S.stats.taunts++;
+  addLog('[战斗] 你对Boss喊了声「嘘！」。它当场社死，PPT停页，受到伤害 ×3（6秒）', 'ev-t3');
+};
+
+// ===== 目标系统（顺序任务链，奖励有界） =====
+const OBJECTIVES = [
+  { text: '到达第 5 区', check: () => S.maxZone >= 5, reward: '金币：当前区金币 ×80', apply: () => S.gold = S.gold.plus(ECON.zoneGold(S.zone).times(80).times(mults().goldGain)) },
+  { text: '物理超度首个 Boss（区10）', check: () => S.stats.bosses >= 1, reward: '黑魂工资 +1 点', apply: () => S.souls += 1 },
+  { text: '收集 3 件词缀', check: () => S.affixes.length >= 3, reward: '金币：当前区金币 ×150', apply: () => S.gold = S.gold.plus(ECON.zoneGold(S.zone).times(150).times(mults().goldGain)) },
+  { text: '连杀达到 ×10', check: () => S.stats.maxCombo >= 10, reward: '黑魂工资 +1 点', apply: () => S.souls += 1 },
+  { text: '使用主动技能 10 次', check: () => S.stats.skillUses >= 10, reward: '技能冷却永久 -10%', apply: () => S.stats.cdReduce = Math.min(0.3, (S.stats.cdReduce || 0) + 0.1) },
+  { text: '对 Boss 嘘他 3 次', check: () => S.stats.taunts >= 3, reward: '嘘他冷却 -4 秒', apply: () => S.stats.tauntCdReduce = Math.min(8, (S.stats.tauntCdReduce || 0) + 4) },
+  { text: '到达第 30 区', check: () => S.maxZone >= 30, reward: '黑魂工资 +2 点', apply: () => S.souls += 2 },
+  { text: '任意技能升到 Lv2', check: () => Object.values(S.skillLv).some(v => v >= 2), reward: '金币：当前区金币 ×300', apply: () => S.gold = S.gold.plus(ECON.zoneGold(S.zone).times(300).times(mults().goldGain)) },
+  { text: '完成首次转生', check: () => S.prestige >= 1, reward: '黑魂工资 +2 点', apply: () => S.souls += 2 },
+  { text: '到达第 50 区（终极摸鱼认证）', check: () => S.maxZone >= 50, reward: '黑魂工资 +3 点 + 魔王的赞美（纯精神的）', apply: () => S.souls += 3 },
+];
+function claimObjective(idx) {
+  const o = OBJECTIVES[idx];
+  if (!o || S.stats.claimed.includes(idx) || !o.check()) return;
+  S.stats.claimed.push(idx);
+  o.apply();
+  showPopup('【目标达成】', ['「' + o.text + '」已完成', '奖励已发放：' + o.reward, '魔王对你的表现表示满意，并免除了本季度一次团建。'], 'ev-t3');
+  addLog('[目标] 达成「' + o.text + '」→ ' + o.reward, 'ev-t3');
+  save();
+}
+document.getElementById('objList').addEventListener('click', e => {
+  const b = e.target.closest('button[data-obj]');
+  if (b) claimObjective(Number(b.dataset.obj));
+});
+
+// ===== 黑魂商店 =====
+function buyShop(k) {
+  const cost = ECON.shopCost(S.shop[k]);
+  if (S.souls < cost) return;
+  S.souls -= cost; S.shop[k]++;
+  save();
+}
+document.getElementById('shopTyr').onclick = () => buyShop('tyr');
+document.getElementById('shopSqz').onclick = () => buyShop('sqz');
+document.getElementById('shopMad').onclick = () => buyShop('mad');
+
+// ---------- 主循环 ----------
+const TICK = 0.1;
+let lastTickAt = performance.now(), saveTimer = 0, eventTimer = 0;
+// 逻辑循环与渲染解耦：setInterval + 自适应子步长。
+// 修复：rAF 驱动逻辑会在后台标签页被浏览器节流(rAF降至~1Hz)，放置游戏挂机严重减速。
+function tickStep() {
+  const m = mults();
+  if (!S.stunUntil || Date.now() > S.stunUntil) {
+    attackTimer += TICK * C.atkSpeed * m.atkSpeed;
+    let strikes = 0;
+    while (attackTimer >= 1 && strikes < 30) { attackTimer -= 1; doStrike(); strikes++; }
+  }
+  const now = Date.now();
+  S.buffs = S.buffs.filter(b => b.until === 0 || now < b.until);
+  eventTimer += TICK;
+  if (eventTimer >= S.nextEventIn / 1000) {
+    eventTimer = 0;
+    S.nextEventIn = C.eventBaseIntervalSec * (0.6 + Math.random() * 0.9) * 1000 / Math.max(1, m.eventRate * 0.5 * Math.pow(C.shopMadnessMult, S.shop.mad));
+    fireEvent();
+  }
+  saveTimer += TICK;
+  if (saveTimer >= 5) { saveTimer = 0; save(); }
+}
+function tick() {
+  const now = performance.now();
+  let elapsed = (now - lastTickAt) / 1000;
+  lastTickAt = now;
+  elapsed = Math.min(elapsed, 60); // 防睡眠/挂起后的时间黑洞
+  const steps = Math.min(600, Math.ceil(elapsed / TICK));
+  for (let i = 0; i < steps; i++) tickStep();
+}
+
+// ---------- 渲染 v2：程序化像素美术 ----------
+const cv = document.getElementById('scene'), ctx = cv.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+// --- 像素精灵定义（字符地图 + 调色板，无外部资源） ---
+const PAL_PLAYER = { H: '#5a5a6e', h: '#3a3a4a', F: '#1a1a22', E: '#ff3c3c', A: '#8a8aa0', D: '#6a4a1a', P: '#2a2a38', B: '#1a1a20', S: '#c0c0d0' };
+const SPR_PLAYER = [
+  '....HHHHHH....',
+  '...HHHHHHHH...',
+  '...hFFFFFFh...',
+  '...hFEFFEFh...',
+  '...hFFFFFFh...',
+  '..OHHHHHHHHO..',
+  '.OAHhhhhhhHAO.',
+  '.OAHhhhhhhHAO.',
+  '..Ohhhhhhhho..',
+  '...hDDDDDDh...',
+  '...Php..hpP...',
+  '...Php..hpP...',
+  '...Bb....bB...',
+  '...BB....BB...',
+];
+// 恶魔（面朝左）：H=角 M=主体 K=眼 T=牙 C=爪
+const SPR_DEMON = [
+  '..HH........HH..',
+  '..HHH......HHH..',
+  '...HHH....HHH...',
+  '....MMMMMMMM....',
+  '...MMKMMMMKMM...',
+  '...MMKMMMMKMM...',
+  '...MMMMMMMMMM...',
+  '..TMMMMMMMMMMT..',
+  '..MTMMMMMMMMTM..',
+  '..MMMMMMMMMMMM..',
+  '.CMMMMMMMMMMMC..',
+  '..MMMMMMMMMMMM..',
+  '..MMMM....MMMM..',
+  '..MMM......MMM..',
+  '..MM........MM..',
+  '..CC........CC..',
+];
+const SPR_CROWN = [
+  '.Y.Y.Y.Y.Y.Y.',
+  '.YYYYYYYYYYY.',
+];
+const TIER_PAL = [
+  { M: '#5a7a4a', K: '#c6ff3c', H: '#3a5a2a', T: '#d9e8c0', C: '#2a4a1a' }, // 腐朽墓穴·腐绿
+  { M: '#7a2a3a', K: '#ffd700', H: '#4a1a2a', T: '#f0d0d0', C: '#5a1a1a' }, // 鲜血大教堂·血红
+  { M: '#3a5a7a', K: '#3cff9e', H: '#1a3a5a', T: '#c0e8ff', C: '#1a4a5a' }, // 深渊矿场·幽蓝
+  { M: '#5a2a7a', K: '#ff3c3c', H: '#3a1a5a', T: '#e8d0ff', C: '#3a1a4a' }, // 万魔殿·紫
+  { M: '#c8c8d8', K: '#ffffff', H: '#8a8aa0', T: '#ffffff', C: '#8a8aa0' }, // 天使之门·白
+  { M: '#2a2a3a', K: '#8a1a1a', H: '#1a1a2a', T: '#5a4a4a', C: '#1a1a2a' }, // 神座·暗影
+];
+
+// 精灵缓存：渲染一次到离屏画布
+const spriteCache = {};
+function getSprite(map, pal, scale, flip) {
+  const key = JSON.stringify([map.length, map[0].length, pal, scale, flip]);
+  if (spriteCache[key]) return spriteCache[key];
+  const w = map[0].length * scale, h = map.length * scale;
+  const oc = document.createElement('canvas'); oc.width = w; oc.height = h;
+  const o = oc.getContext('2d');
+  for (let y = 0; y < map.length; y++) for (let x = 0; x < map[y].length; x++) {
+    const ch = map[y][x];
+    if (ch === '.' || !pal[ch]) continue;
+    o.fillStyle = pal[ch];
+    o.fillRect((flip ? map[y].length - 1 - x : x) * scale, y * scale, scale, scale);
+  }
+  spriteCache[key] = oc;
+  return oc;
+}
+
+// --- 场景状态 ---
+let lastStrikeAt = 0, hitFlashUntil = 0, shake = 0;
+const floaters = [], particles = [], decals = [], embers = [];
+let fogT = 0;
+
+// --- 特效入口 ---
+function addFloater(text, color, size) {
+  if (floaters.length > 60) floaters.shift();
+  floaters.push({ x: 620 + Math.random() * 180, y: 110 + Math.random() * 60, vy: -0.9 - Math.random() * 0.6, text, color, size, life: 1 });
+}
+function burst(n, color) {
+  for (let i = 0; i < n; i++) particles.push({
+    x: 700 + (Math.random() - 0.5) * 90, y: 160 + (Math.random() - 0.5) * 70,
+    vx: (Math.random() - 0.5) * 7, vy: -Math.random() * 6, life: 1, color, g: 0.3,
+  });
+}
+function killFx() {
+  burst(70, '#8a1a1a'); burst(30, '#c62828');
+  decals.push({ x: 700 + (Math.random() - 0.5) * 60, r: 14 + Math.random() * 18, life: 1 });
+  if (decals.length > 8) decals.shift();
+}
+
+// --- 背景：哥特地牢 ---
+function drawBackground(t) {
+  const g = ctx.createLinearGradient(0, 0, 0, 300);
+  g.addColorStop(0, '#0a0608'); g.addColorStop(0.7, '#150d0a'); g.addColorStop(1, '#1a100a');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, cv.width, 300);
+  // 远景拱窗（月光）
+  ctx.fillStyle = '#1c1420';
+  ctx.fillRect(430, 40, 40, 90); ctx.fillRect(300, 55, 30, 70);
+  ctx.fillStyle = 'rgba(120,140,200,0.10)';
+  ctx.fillRect(434, 44, 32, 82); ctx.fillRect(304, 59, 22, 62);
+  // 石柱（近景，左右）
+  for (const [px, pw] of [[40, 46], [830, 46]]) {
+    ctx.fillStyle = '#221610'; ctx.fillRect(px, 0, pw, 250);
+    ctx.fillStyle = '#2e1e14'; ctx.fillRect(px + 4, 0, 6, 250); ctx.fillRect(px + pw - 10, 0, 6, 250);
+    for (let y = 30; y < 250; y += 44) { ctx.fillStyle = '#181008'; ctx.fillRect(px, y, pw, 4); }
+  }
+  // 火把 ×2（动态火焰）
+  for (const tx of [140, 560]) {
+    ctx.fillStyle = '#3a2414'; ctx.fillRect(tx, 130, 5, 40);
+    for (let i = 0; i < 6; i++) {
+      const fx = tx + 2 + (Math.random() - 0.5) * 8, fy = 128 - Math.random() * 14, fs = 3 + Math.random() * 4;
+      ctx.fillStyle = ['#ff6c1a', '#ffb01a', '#ffd700'][Math.floor(Math.random() * 3)];
+      ctx.fillRect(fx, fy, fs, fs);
+    }
+    const glow = ctx.createRadialGradient(tx + 2, 120, 4, tx + 2, 120, 90);
+    glow.addColorStop(0, 'rgba(255,140,30,0.16)'); glow.addColorStop(1, 'rgba(255,140,30,0)');
+    ctx.fillStyle = glow; ctx.fillRect(tx - 90, 30, 190, 190);
+  }
+  // 地面石砖
+  ctx.fillStyle = '#1a0f08'; ctx.fillRect(0, 250, cv.width, 70);
+  ctx.strokeStyle = '#241610'; ctx.lineWidth = 1;
+  for (let y = 252; y < 300; y += 14) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(cv.width, y); ctx.stroke();
+    const off = ((y - 252) / 14) % 2 ? 40 : 0;
+    for (let x = off; x < cv.width; x += 80) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 14); ctx.stroke(); }
+  }
+  // 血渍层（击杀遗留，缓慢消退）
+  for (const d of decals) {
+    d.life -= 0.0006;
+    ctx.globalAlpha = Math.min(0.55, d.life) * 0.55;
+    ctx.fillStyle = '#4a0a0a';
+    ctx.beginPath(); ctx.ellipse(d.x, 262, d.r, d.r * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  // 漂浮雾气
+  fogT = t;
+  for (let i = 0; i < 3; i++) {
+    const fx = ((t * (6 + i * 4)) % (cv.width + 300)) - 150;
+    ctx.fillStyle = 'rgba(90,70,90,0.05)';
+    ctx.beginPath(); ctx.ellipse(fx, 200 + i * 30, 130, 34, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  // 上升余烬
+  if (Math.random() < 0.25 && embers.length < 24) embers.push({ x: Math.random() * cv.width, y: 300, vy: -0.3 - Math.random() * 0.5, life: 1 });
+  for (let i = embers.length - 1; i >= 0; i--) {
+    const e = embers[i];
+    e.y += e.vy; e.x += Math.sin(e.y / 20) * 0.4; e.life -= 0.004;
+    if (e.life <= 0 || e.y < 0) { embers.splice(i, 1); continue; }
+    ctx.globalAlpha = e.life * 0.8;
+    ctx.fillStyle = Math.random() < 0.5 ? '#ff6c1a' : '#ffd700';
+    ctx.fillRect(e.x, e.y, 2, 2);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// --- 角色绘制 ---
+function drawFighters(t) {
+  const boss = ECON.isBoss(S.zone);
+  const pal = TIER_PAL[Math.min(TIER_PAL.length - 1, Math.floor((S.zone - 1) / 10))];
+  // 玩家（左，持剑，挥剑动画）
+  const scale = 6;
+  const sp = getSprite(SPR_PLAYER, PAL_PLAYER, scale, false);
+  const bob = Math.sin(t / 400) * 2;
+  ctx.drawImage(sp, 96, 214 + bob);
+  // 挥剑弧光：打击后 180ms 内剑刃扫过
+  const swing = (performance.now() - lastStrikeAt) / 180;
+  if (swing < 1) {
+    const ang = -1.9 + swing * 2.6;
+    ctx.save();
+    ctx.translate(152, 236); ctx.rotate(ang);
+    ctx.strokeStyle = 'rgba(255,215,0,0.9)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0, 0, 34, -0.5, 0.5); ctx.stroke();
+    ctx.fillStyle = '#c0c0d0'; ctx.fillRect(0, -2, 36, 4);
+    ctx.restore();
+  } else {
+    ctx.fillStyle = '#c0c0d0'; ctx.fillRect(150, 234, 26, 3); // 待机持剑
+  }
+  // 怪物（右，面朝左；Boss放大+王冠+阴影）
+  const mScale = boss ? 8 : 5;
+  const dm = getSprite(SPR_DEMON, pal, mScale, true);
+  const mx = 706 - (boss ? 96 : 40);
+  const mBob = Math.sin(t / 300 + S.zone) * 3;
+  const my = boss ? 152 : 196;
+  // 影子
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.beginPath(); ctx.ellipse(mx + (boss ? 64 : 40), 268, boss ? 80 : 46, 8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.drawImage(dm, mx, my + mBob);
+  if (boss) {
+    const cr = getSprite(SPR_CROWN, { Y: '#ffd700' }, mScale, false);
+    ctx.drawImage(cr, mx + 17, my + mBob - 18);
+  }
+  // 受击白闪
+  if (performance.now() < hitFlashUntil) {
+    ctx.globalAlpha = 0.65; ctx.globalCompositeOperation = 'lighter';
+    ctx.drawImage(dm, mx, my + mBob);
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  }
+  // Boss 名牌
+  ctx.textAlign = 'center';
+  if (boss) {
+    ctx.font = 'bold 14px monospace'; ctx.fillStyle = '#ff6c6c';
+    ctx.shadowColor = '#800'; ctx.shadowBlur = 8;
+    ctx.fillText('★ ' + ECON.bossName(S.zone), 700, 52);
+    ctx.shadowBlur = 0;
+  } else {
+    ctx.font = '11px monospace'; ctx.fillStyle = '#6a5a4a';
+    ctx.fillText('第' + S.zone + '区 · 路人怪', 700, 56);
+  }
+}
+
+function render() {
+  const t = performance.now();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  if (shake > 0) { ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake); shake *= 0.85; }
+  drawBackground(t);
+  drawFighters(t);
+  // 血条
+  const boss = ECON.isBoss(S.zone);
+  const ratio = Math.max(0, Math.min(1, S.hp.div(S.hpMax).toNumber()));
+  ctx.fillStyle = '#3a1410'; ctx.fillRect(560, 242, 280, 10);
+  ctx.fillStyle = boss ? '#c62828' : '#8a4a2a'; ctx.fillRect(560, 242, 280 * ratio, 10);
+  ctx.strokeStyle = '#3a2a1a'; ctx.strokeRect(560, 242, 280, 10);
+  ctx.fillStyle = '#a08c5f'; ctx.font = '10px monospace'; ctx.textAlign = 'left';
+  ctx.fillText(ECON.fmt(S.hp) + ' / ' + ECON.fmt(S.hpMax), 562, 266);
+  // 连杀指示
+  if (S.combo > 1 && Date.now() - S.lastKillAt < C.comboWindowMs) {
+    ctx.font = 'bold 16px monospace'; ctx.textAlign = 'left';
+    ctx.fillStyle = S.combo >= 20 ? '#ff3c6c' : '#ffd700';
+    ctx.fillText('连杀 ×' + S.combo + '  (金币 ×' + comboMult().toFixed(2) + ')', 200, 60);
+  }
+  // 伤害飘字
+  for (let i = floaters.length - 1; i >= 0; i--) {
+    const f = floaters[i];
+    f.y += f.vy; f.life -= 0.016;
+    if (f.life <= 0) { floaters.splice(i, 1); continue; }
+    ctx.globalAlpha = Math.min(1, f.life * 2);
+    ctx.font = `bold ${f.size}px monospace`;
+    ctx.fillStyle = f.color;
+    ctx.shadowColor = f.color; ctx.shadowBlur = 8;
+    ctx.fillText(f.text, f.x, f.y);
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  }
+  // 粒子（血雾）
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx; p.y += p.vy; p.vy += p.g; p.life -= 0.02;
+    if (p.life <= 0) { particles.splice(i, 1); continue; }
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x, p.y, 3, 3);
+    ctx.globalAlpha = 1;
+  }
+  // 暗角
+  const v = ctx.createRadialGradient(cv.width / 2, 150, 180, cv.width / 2, 150, 520);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.5)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, cv.width, 300);
+}
+
+// ---------- UI 刷新 ----------
+const $ = id => document.getElementById(id);
+function refreshUI() {
+  const m = mults();
+  const cp = crtP();
+  const now = Date.now();
+  $('uiGold').textContent = ECON.fmt(S.gold);
+  $('uiDps').textContent = ECON.fmt(ECON.dpsOf(ECON.atkOf(S.level), m, cp));
+  $('uiZone').textContent = `${ECON.mapName(S.zone)} · 第${S.zone}区${ECON.isBoss(S.zone) ? ' ★BOSS' : ''}`;
+  $('uiPrestige').textContent = `${S.prestige}次 · 商店全局 ×${ECON.fmt(new D(Math.pow(C.shopTyrannyMult, S.shop.tyr)))}`;
+  // 三线按钮
+  const atk = trackInfo('atk'), spd = trackInfo('spd'), crt = trackInfo('crt');
+  $('uiLv').textContent = S.level; $('uiAtk').textContent = ECON.fmt(ECON.atkOf(S.level)); $('uiCost').textContent = ECON.fmt(atk.cost);
+  $('uiSpd').textContent = Math.pow(C.spdGain, S.spd).toFixed(2);
+  $('uiSpdLv').textContent = S.spd; $('uiSpdCost').textContent = ECON.fmt(spd.cost);
+  $('uiCrit').textContent = Math.round(cp.rate * 100) + '%/×' + cp.mult.toFixed(1);
+  $('uiCrtLv').textContent = S.crt; $('uiCrtCost').textContent = ECON.fmt(crt.cost);
+  $('buyAtk').disabled = S.gold.lt(atk.cost); $('buySpd').disabled = S.spd >= C.spdMax || S.gold.lt(spd.cost); $('buyCrt').disabled = S.crt >= C.crtMax || S.gold.lt(crt.cost);
+  // 转生与商店
+  const soulsGain = ECON.prestigeSouls(S.maxZone);
+  $('uiSoulsGain').textContent = soulsGain;
+  $('prestigeBtn').classList.toggle('hidden', S.zone < C.prestigeReqZone);
+  const shopOpen = S.souls > 0 || S.prestige > 0;
+  $('shopPanel').classList.toggle('hidden', !shopOpen);
+  $('uiSouls').textContent = S.souls;
+  const shopBtns = { shopTyr: 'tyr', shopSqz: 'sqz', shopMad: 'mad' };
+  for (const [btn, k] of Object.entries(shopBtns)) {
+    const lv = S.shop[k], cost = ECON.shopCost(lv);
+    $(btn + 'Lv').textContent = lv; $(btn + 'Cost').textContent = cost;
+    $(btn).disabled = S.souls < cost;
+  }
+  // 技能冷却 + 升级按钮
+  const capID = id => id.charAt(0).toUpperCase() + id.slice(1);
+  for (const [id, sk] of Object.entries(SKILLS)) {
+    const remain = Math.max(0, effCd(id) - (now - S.skillAt[id]) / 1000);
+    const btn = $('sk' + capID(id));
+    const cdEl = $('sk' + capID(id) + 'Cd');
+    btn.disabled = remain > 0;
+    cdEl.textContent = remain > 0 ? '冷却 ' + Math.ceil(remain) + 's' : '就绪';
+    const lv = S.skillLv[id], maxLv = ECON.SKILL_MAX[id], upBtn = $('up' + capID(id));
+    if (lv >= maxLv) { upBtn.disabled = true; upBtn.textContent = upBtn.textContent.split(' (')[0] + ' (已满级)'; }
+    else {
+      const cost = ECON.skillCost(lv);
+      $( 'up' + capID(id) + 'Lv').textContent = lv;
+      $('up' + capID(id) + 'Cost').textContent = ECON.fmt(cost);
+      upBtn.disabled = S.gold.lt(cost);
+    }
+  }
+  $('skFuryMult').textContent = skillParamsOf('fury').mult;
+  $('skSlamSec').textContent = skillParamsOf('slam').dpsSec;
+  $('skTaxSec').textContent = skillParamsOf('tax').goldSec;
+  // 目标列表：显示前3个未领取的
+  const objEl = $('objList');
+  const unclaimed = OBJECTIVES.map((o, i) => ({ o, i })).filter(x => !S.stats.claimed.includes(x.i));
+  // 可领取的始终置顶，再按顺序补齐进行中的，最多显示3个
+  const pending = unclaimed.filter(x => x.o.check()).concat(unclaimed.filter(x => !x.o.check())).slice(0, 3);
+  if (pending.length === 0) objEl.innerHTML = '<span style="color:var(--green)">全部 KPI 完成！魔王表示：你被开除了，因为没什么可教你的了。</span>';
+  else {
+    objEl.innerHTML = pending.map(({ o, i }) => {
+      const done = o.check();
+      return `<div style="margin-bottom:4px">${done ? '✅' : '⬜'} ${o.text} <span style="color:var(--parchment-dim)">→ ${o.reward}</span> ` +
+        (done ? `<button data-obj="${i}" style="font-size:10px;padding:2px 8px">领取</button>` : '') + `</div>`;
+    }).join('');
+  }
+  // 嘘他按钮
+  const isBoss = ECON.isBoss(S.zone);
+  const taunt = $('tauntBtn');
+  taunt.classList.toggle('hidden', !isBoss || now < S.tauntCdUntil);
+  if (now < S.tauntUntil) taunt.textContent = '破防中… ×3';
+  const el = $('affixList');
+  if (S.affixes.length === 0) el.innerHTML = '<span style="font-size:11px;color:var(--parchment-dim)">空空如也。去打第一个 Boss（第10区）。</span>';
+  else {
+    el.innerHTML = '';
+    S.affixes.forEach(id => {
+      const a = AFFIX.affixes.find(x => x.id === id); if (!a) return;
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.style.borderColor = qualityColor[a.quality];
+      chip.style.color = qualityColor[a.quality];
+      chip.textContent = a.text;
+      chip.title = '品质：' + AFFIX.quality.find(q => q.id === a.quality).name;
+      el.appendChild(chip);
+    });
+  }
+}
+
+function frame() {
+  render();
+  refreshUI();
+  requestAnimationFrame(frame);
+}
+setInterval(tick, 100);
+
+// ---------- 启动 ----------
+window.addEventListener('beforeunload', save);
+load();
+addLog('[系统] 欢迎来到永恒诅咒之渊。这里的神明已跑路，恶魔在打卡，一切诅咒均不含恶意。', 'ev-t2');
+addLog('[系统] 点击「一键买满」开始你的摸鱼征途。每10区一个Boss，会掉词缀。', '');
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

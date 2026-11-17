@@ -1,0 +1,178 @@
+{
+  "meta": {
+    "table": "equipment_affixes",
+    "version": "0.2",
+    "game": "深渊摸鱼录",
+    "aligned_doc": "步骤1-Web技术架构与核心数值模型.md",
+    "notes": "所有 mult 一律乘算(设计红线)；zone 枚举必须与 ECON 模型的乘区名一致；数值单位为倍率而非加值"
+  },
+  "zones": {
+    "atk": "攻击力乘区",
+    "atkSpeed": "攻速乘区",
+    "critChance": "暴击率乘区(基于基础5%)",
+    "critMult": "暴伤乘区(基于基础x2)",
+    "allDmg": "全局伤害乘区",
+    "goldGain": "金币收益乘区",
+    "offlineGain": "离线收益乘区",
+    "bossDmg": "对Boss伤害乘区",
+    "eventRate": "抽象事件触发率乘区",
+    "moodGain": "情绪值获取乘区"
+  },
+  "quality": [
+    { "id": "white",   "name": "普通",   "color": "#c8c8c8", "dropWeight": 55.0, "affixCount": [1, 1], "note": "过渡用，几乎无乘区" },
+    { "id": "blue",    "name": "魔法",   "color": "#6c9cff", "dropWeight": 27.0, "affixCount": [1, 2], "note": "单一小乘区起步" },
+    { "id": "yellow",  "name": "稀有",   "color": "#ffff6c", "dropWeight": 12.0, "affixCount": [2, 3], "note": "多乘区+可带proc" },
+    { "id": "ancient", "name": "暗金",   "color": "#c87533", "dropWeight": 5.49,  "affixCount": [4, 6], "note": "核心追求，期望全件乘积约x10^4" },
+    { "id": "primal",  "name": "太古",   "color": "#ff3c3c", "dropWeight": 0.5,  "affixCount": [6, 6], "note": "全服广播级掉落，必有1条机制型词缀" },
+    { "id": "glitch",  "name": "质检员的错别字", "color": "#3cff9e", "dropWeight": 0.01, "affixCount": [1, 1], "note": "隐藏彩蛋：每日随机重roll一条词缀，论坛话题制造机" }
+  ],
+  "affixes": [
+    {
+      "id": "aff_wood_stick",
+      "quality": "white",
+      "text": "木棒。真的就只是木棒。",
+      "effects": [{ "type": "always", "zone": "atk", "mult": 1.1 }]
+    },
+    {
+      "id": "aff_honest_broom",
+      "quality": "white",
+      "text": "扫帚。深渊清洁工的失业证明。",
+      "effects": [{ "type": "always", "zone": "goldGain", "mult": 1.15 }]
+    },
+    {
+      "id": "aff_leek_50000",
+      "quality": "blue",
+      "text": "攻击力 +50000%，但武器外观变成一根大葱",
+      "cosmetic": "leek",
+      "effects": [{ "type": "always", "zone": "atk", "mult": 500 }]
+    },
+    {
+      "id": "aff_rush_hour",
+      "quality": "blue",
+      "text": "早八之力。挤过地铁的手速不会说谎。",
+      "effects": [{ "type": "always", "zone": "atkSpeed", "mult": 1.5 }]
+    },
+    {
+      "id": "aff_salty_reviewer",
+      "quality": "yellow",
+      "text": "每次攻击有 5% 概率让 Boss 陷入对人生的深度怀疑（眩晕 3 秒）",
+      "effects": [
+        { "type": "always", "zone": "critChance", "mult": 1.2 },
+        { "type": "proc", "chance": 0.05, "effect": { "kind": "stun", "durationSec": 3, "log": "Boss头顶冒出气泡：我这么多年的KPI到底为了什么……" } }
+      ]
+    },
+    {
+      "id": "aff_overtime_curse",
+      "quality": "yellow",
+      "text": "把加班怨气注入武器。数值策划看了会沉默。",
+      "effects": [
+        { "type": "always", "zone": "allDmg", "mult": 12 },
+        { "type": "always", "zone": "moodGain", "mult": 0.8 }
+      ]
+    },
+    {
+      "id": "aff_goblin_loan",
+      "quality": "yellow",
+      "text": "附带哥布林的欠条。击杀敌人时替它收账。",
+      "effects": [{ "type": "always", "zone": "goldGain", "mult": 8 }]
+    },
+    {
+      "id": "aff_reply_all",
+      "quality": "ancient",
+      "text": "击杀敌人后，向深渊群里发「收到」，全体攻击 ×300，持续 10 秒",
+      "effects": [
+        { "type": "always", "zone": "allDmg", "mult": 20 },
+        { "type": "proc", "chance": 1.0, "effect": { "kind": "buff", "zone": "atk", "mult": 300, "durationSec": 10, "log": "深渊群弹出99+条消息：收到 收到 收到 收到" } }
+      ]
+    },
+    {
+      "id": "aff_long_name_slayer",
+      "quality": "ancient",
+      "text": "对名字超过 8 个字的 Boss 伤害 ×9999（专治史诗感）",
+      "effects": [
+        { "type": "conditional", "condition": { "bossNameMinLength": 8 }, "zone": "bossDmg", "mult": 9999 }
+      ]
+    },
+    {
+      "id": "aff_demon_kpi",
+      "quality": "ancient",
+      "text": "恶魔替你打工。它不情愿，但合同已签。",
+      "effects": [
+        { "type": "always", "zone": "offlineGain", "mult": 15 },
+        { "type": "always", "zone": "eventRate", "mult": 1.5 }
+      ]
+    },
+    {
+      "id": "aff_existential_crit",
+      "quality": "ancient",
+      "text": "暴击时敌人会思考存在主义问题，受到的伤害翻倍再翻倍",
+      "effects": [
+        { "type": "always", "zone": "critMult", "mult": 4 },
+        { "type": "always", "zone": "critChance", "mult": 1.8 }
+      ]
+    },
+    {
+      "id": "aff_gossip_network",
+      "quality": "ancient",
+      "text": "与深渊保洁阿姨结盟。全地图情报网，事件源源不断。",
+      "effects": [{ "type": "always", "zone": "eventRate", "mult": 10 }]
+    },
+    {
+      "id": "aff_payroll_skull",
+      "quality": "ancient",
+      "text": "骷髅兵 033 号的工资条。发工资的瞬间全体狂暴。",
+      "effects": [
+        { "type": "always", "zone": "atk", "mult": 50 },
+        { "type": "proc", "chance": 0.1, "effect": { "kind": "buff", "zone": "atkSpeed", "mult": 5, "durationSec": 8, "log": "骷髅兵033：工资到账！干碎他们！" } }
+      ]
+    },
+    {
+      "id": "aff_angel_review",
+      "quality": "ancient",
+      "text": "天使客服亲笔好评。被夸过的敌人会害羞地降低防御。",
+      "effects": [
+        { "type": "always", "zone": "bossDmg", "mult": 100 },
+        { "type": "always", "zone": "moodGain", "mult": 2 }
+      ]
+    },
+    {
+      "id": "aff_report_generator",
+      "quality": "primal",
+      "text": "本武器每小时自动撰写一篇《深渊职场生存报告》，阅读者（敌人）直接下岗",
+      "effects": [
+        { "type": "always", "zone": "allDmg", "mult": 500 },
+        { "type": "proc", "chance": 1.0, "effect": { "kind": "execute", "threshold": 0.3, "log": "报告已群发。血量低于30%的怪物集体下岗。" } }
+      ]
+    },
+    {
+      "id": "aff_table_flip",
+      "quality": "primal",
+      "text": "掀桌之力。每 60 秒自动小型掀桌一次，当前所有乘区临时 ×10",
+      "effects": [
+        { "type": "always", "zone": "allDmg", "mult": 100 },
+        { "type": "proc", "chance": 1.0, "periodSec": 60, "effect": { "kind": "globalMult", "mult": 10, "durationSec": 5, "log": "（桌子碎裂声）魔王：又掀？！这已经是本周第三次了！" } }
+      ]
+    },
+    {
+      "id": "aff_mood_reactor",
+      "quality": "primal",
+      "text": "情绪永动机。心情值转化为伤害，转化率违反能量守恒",
+      "effects": [
+        { "type": "always", "zone": "atk", "mult": 1000 },
+        { "type": "always", "zone": "moodGain", "mult": 20 }
+      ]
+    },
+    {
+      "id": "aff_glitch_blank",
+      "quality": "glitch",
+      "text": "属性：策划忘填了。效果：也忘了。但它是彩色的。",
+      "dailyReroll": true,
+      "effects": [{ "type": "always", "zone": "allDmg", "mult": 1 }]
+    }
+  ],
+  "dailyRerollPool": [
+    { "text": "每日随机词缀①：今天心情不错，全局 ×50", "effects": [{ "type": "always", "zone": "allDmg", "mult": 50 }] },
+    { "text": "每日随机词缀②：骷髅兵集体请了病假，离线收益 ×100 但攻速 ×0.5", "effects": [{ "type": "always", "zone": "offlineGain", "mult": 100 }, { "type": "always", "zone": "atkSpeed", "mult": 0.5 }] },
+    { "text": "每日随机词缀③：魔王今天不在，Boss 金币 ×500", "effects": [{ "type": "always", "zone": "goldGain", "mult": 500 }] }
+  ]
+}
