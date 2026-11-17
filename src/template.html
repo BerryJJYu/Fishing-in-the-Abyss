@@ -78,12 +78,15 @@
   <div class="stat" id="zoneinfo"><div class="k">当前区域</div><div class="v" id="uiZone">腐朽墓穴 · 第1区</div></div>
   <div class="stat"><div class="k">转生次数</div><div class="v" id="uiPrestige">0</div></div>
   <div class="stat" style="cursor:pointer; display:flex; align-items:center" id="hallBtn"><div class="v" style="font-size:14px">🏛 成就墙 / 时间线收藏馆</div></div>
+  <div class="stat" style="cursor:pointer; display:flex; align-items:center" id="sfxBtn"><div class="v" style="font-size:14px">🔊 音效开</div></div>
 </div>
 <div id="hallModal" class="hidden">
   <div id="hallInner">
     <h2>成 就 墙 · 时 间 线 收 藏 馆</h2>
     <div style="font-size:11px;color:var(--parchment-dim)">每枚成就：黑魂工资 +1 点 + 永久全局 ×1.05。魔王说这叫员工激励，虽然他没发过工资。</div>
     <div id="achSummary" style="font-size:12px;color:var(--gold);margin-top:6px"></div>
+    <h3>💀 Boss 图 鉴（物理超度花名册）</h3>
+    <div id="dexGrid"></div>
     <h3>🏆 成 就 墙</h3>
     <div id="achGrid"></div>
     <h3>🕰 时 间 线 收 藏 馆（被你掀掉的时间线）</h3>
@@ -103,11 +106,14 @@
     <div style="margin-top:4px"><button id="buyCrt">🎯 暴击 Lv.<span id="uiCrtLv">0</span>/20 (<span id="uiCrtCost">100</span>)</button></div>
     <div style="margin-top:6px"><button id="buyMaxBtn" style="width:100%">一键买满（攻击线）</button></div>
     <button id="prestigeBtn" class="hidden">【掀桌子重开时间线】<br>献祭一切 → 黑魂工资 +<span id="uiSoulsGain">5</span> 点</button>
+  <button id="ascendBtn" class="hidden" style="background:linear-gradient(180deg,#1a2a4a,#0a1428);border-color:#6c9cff;color:#9cc8ff;">【飞升·面见摸鱼之神】<br>区80解锁 → 神格点 +<span id="uiDpGain">1</span> · 保留装备与天赋</button>
     <div id="shopPanel" class="hidden">
       <div class="boxtitle" style="margin-top:8px">黑 魂 工 资 商 店（<span id="uiSouls">0</span> 点）</div>
       <div style="margin-top:4px"><button id="shopTyr">暴政 ×2.5 (<span id="shopTyrCost">1</span>) Lv.<span id="shopTyrLv">0</span></button></div>
       <div style="margin-top:4px"><button id="shopSqz">压榨·离线 ×2 (<span id="shopSqzCost">1</span>) Lv.<span id="shopSqzLv">0</span></button></div>
       <div style="margin-top:4px"><button id="shopMad">发疯·事件 ×1.5 (<span id="shopMadCost">1</span>) Lv.<span id="shopMadLv">0</span></button></div>
+      <div class="boxtitle" style="margin-top:8px">转 生 天 赋 树（需对应线等级，效果改变玩法）</div>
+      <div id="talentArea" style="font-size:11px;line-height:1.7"></div>
     </div>
   </div>
   <div class="box flex1">
@@ -125,6 +131,21 @@
       <button id="enhTrinket">💍饰品 Lv.<span id="enhTrinketLv">0</span>/15 (<span id="enhTrinketCost">?</span>屑+<span id="enhTrinketGold">?</span>)</button>
     </div>
     <div id="bsMsg" style="font-size:11px;color:var(--parchment);margin-top:6px;min-height:16px">铁匠：想强化就说话，别拿眼睛锯我。</div>
+  </div>
+  <div class="box flex1" id="dpBox">
+    <div class="boxtitle">神 格 商 店（神格点：<span id="uiDp" style="color:var(--gold)">0</span> · 飞升区80解锁）</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <button id="dpMight">神威 全局×10 (<span id="dpMightCost">1</span>) Lv.<span id="dpMightLv">0</span></button>
+      <button id="dpHaste">神速 攻速×1.5 (<span id="dpHasteCost">1</span>) Lv.<span id="dpHasteLv">0</span></button>
+      <button id="dpTouch">神触 事件×3 (<span id="dpTouchCost">1</span>) Lv.<span id="dpTouchLv">0</span></button>
+    </div>
+    <div style="font-size:10px;color:var(--parchment-dim);margin-top:4px">飞升保留：装备/强化/天赋/商店/成就。清空：区域/等级/金币。</div>
+  </div>
+</div>
+<div id="panel4" style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+  <div class="box flex1">
+    <div class="boxtitle">骷 髅 远 征 队（主动派遣 · 5 分钟 · 派出去的兵不会摸鱼，它们已经在摸了）</div>
+    <div id="expArea" style="font-size:11px;line-height:1.8"></div>
   </div>
 </div>
   <div class="box flex1">
@@ -187,7 +208,8 @@ const D = Decimal;
 const S = {
   gold: new D(0), zone: 1, level: 0, prestige: 0,
   spd: 0, crt: 0,                       // 攻速线/暴击线
-  souls: 0, shop: { tyr: 0, sqz: 0, mad: 0 },   // 黑魂工资与商店
+  souls: 0, shop: { tyr: 0, sqz: 0, mad: 0 },
+  talents: {},   // 黑魂工资与商店
   maxZone: 1, allMax: 1,                // 本次转生最高区 / 史上最高区
   affixes: [], buffs: [],
   hp: null, hpMax: null,
@@ -200,7 +222,11 @@ const S = {
   scrap: 0, pendingEquip: null,
   skillLv: { fury: 0, slam: 0, tax: 0 },
   stats: { kills: 0, bosses: 0, skillUses: 0, taunts: 0, maxCombo: 0, cdReduce: 0, tauntCdReduce: 0, claimed: [], lifetimeSouls: 0 },
-  achievements: [], timeline: [],
+  achievements: [], timeline: [], bossDex: {},
+  glitch: { date: '', mult: 0 },
+  dp: 0, dpShop: { might: 0, haste: 0, touch: 0 },
+  exp: { '033': null, '077': null, '999': null },
+  morningDate: '', chainQueue: null,
   tauntUntil: 0, tauntCdUntil: 0,
 };
 const qualityColor = {}; AFFIX.quality.forEach(q => qualityColor[q.id] = q.color);
@@ -209,24 +235,44 @@ function currentBoss() { return ECON.isBoss(S.zone) ? ECON.bossName(S.zone) : nu
 const GSYS = window.GEAR.createGearSystem(GEARCFG, ECON);
 const GEARQ = {}; GEARCFG.quality.forEach(q => GEARQ[q.id] = q);
 function gearEffects() { return GSYS.itemEffects(S.gear, S.enh); }
-function mults() { return ECON.computeMults(S.affixes, AFFIX, currentBoss(), S.buffs, Math.pow(C.shopTyrannyMult, S.shop.tyr) * Math.pow(1.05, S.achievements.length), Date.now(), { spdLv: S.spd, gearEffects: gearEffects() }); }
+// 质检员的错别字：持有 glitch 装备时每日重摇 allDmg 倍率（log均匀 5~500）
+function checkGlitchReroll() {
+  const hasGlitch = Object.values(S.gear).some(it => it && it.affixes.some(a => a.key === 'sp_glitch'));
+  const today = new Date().toDateString();
+  if (!hasGlitch) { S.glitch.mult = 0; return; }
+  if (S.glitch.date !== today) {
+    S.glitch.date = today;
+    S.glitch.mult = Math.round(Math.pow(10, 0.7 + Math.random() * 2.0) * 10) / 10;
+    showPopup('【质检员的错别字】今日重摇', ['那件彩色装备的属性被质检员又填错了。', '今日效果：全局 ×' + S.glitch.mult, '（质检员表示：反正没人看它的代码。）'], 'ev-t3');
+  }
+}
+function mults() {
+  const m = ECON.computeMults(S.affixes, AFFIX, currentBoss(), S.buffs, Math.pow(C.shopTyrannyMult, S.shop.tyr) * Math.pow(1.05, S.achievements.length), Date.now(), { spdLv: S.spd, gearEffects: gearEffects() });
+  if (S.glitch.mult > 0) m.allDmg *= S.glitch.mult;
+  if (S.dpShop.might > 0) m.allDmg *= Math.pow(10, S.dpShop.might);
+  if (S.dpShop.haste > 0) m.atkSpeed *= Math.pow(1.5, S.dpShop.haste);
+  return m;
+}
 function crtP() { return ECON.critParams(S.crt); }
-function comboMult() { return Math.min(C.comboCap, 1 + S.combo * C.comboStep); }
+function comboMult() { return Math.min(hasTalent('t2') ? C.comboCap * 2 : C.comboCap, 1 + S.combo * C.comboStep); }
 
 function softReset() {
   S.gold = new D(0); S.zone = 1; S.level = 0; S.affixes = []; S.buffs = [];
   S.spd = 0; S.crt = 0; S.maxZone = 1;
   S.combo = 0; S.lastKillAt = 0;
+  S._brk = 0;
   S.hp = S.hpMax = ECON.zoneHP(S.zone); S.stunUntil = 0;
 }
 
 // ---------- 存档 ----------
 function save() {
   localStorage.setItem('abyss_fish_v1', JSON.stringify({
-    v: 5, gold: S.gold.toString(), zone: S.zone, level: S.level, prestige: S.prestige,
+    v: 6, gold: S.gold.toString(), zone: S.zone, level: S.level, prestige: S.prestige,
     spd: S.spd, crt: S.crt, souls: S.souls, shop: S.shop, maxZone: S.maxZone, allMax: S.allMax,
     skillLv: S.skillLv, stats: S.stats, achievements: S.achievements, timeline: S.timeline,
-    gear: S.gear, enh: S.enh, pity: S.pity, scrap: S.scrap,
+    gear: S.gear, enh: S.enh, pity: S.pity, scrap: S.scrap, talents: S.talents,
+    bossDex: S.bossDex, glitch: S.glitch, dp: S.dp, dpShop: S.dpShop,
+    exp: S.exp, morningDate: S.morningDate,
     buffs: S.buffs, lastSave: Date.now(),
   }));
 }
@@ -251,6 +297,11 @@ function load() {
         if (d.v >= 4) { S.achievements = d.achievements || []; S.timeline = d.timeline || []; }
         if (d.v >= 5) {
           S.gear = d.gear || S.gear; S.enh = d.enh || S.enh; S.pity = d.pity || S.pity; S.scrap = d.scrap || 0;
+          if (d.v >= 6) {
+            S.talents = d.talents || {};
+            if (d.v >= 7) { S.bossDex = d.bossDex || {}; S.glitch = d.glitch || S.glitch; }
+            if (d.v >= 8) { S.dp = d.dp || 0; S.dpShop = d.dpShop || { might: 0, haste: 0, touch: 0 }; S.exp = d.exp || S.exp; S.morningDate = d.morningDate || ''; }
+          }
         } else {
           // v4 迁移：旧词缀收藏制退役，按数量补偿碎屑（5屑/条）
           S.scrap = (d.affixes || []).length * 5;
@@ -260,7 +311,7 @@ function load() {
     S.hp = S.hpMax = ECON.zoneHP(S.zone);
     const delta = (Date.now() - (d.lastSave || Date.now())) / 1000;
     if (delta > 60) {
-      const r = ECON.simulateOffline(S, AFFIX, delta, Date.now(), Math.pow(C.shopSqueezeMult, S.shop.sqz));
+      const r = ECON.simulateOffline(S, AFFIX, delta, Date.now(), Math.pow(C.shopSqueezeMult, S.shop.sqz), hasTalent('t5') ? 16 * 3600 : C.offlineCapSec);
       if (r.zonesCleared > 0) {
         showPopup('【离线战报】', [
           `你离开了 ${Math.floor(delta / 60)} 分钟。骷髅兵们替你推掉了 ${r.zonesCleared} 区，`,
@@ -310,6 +361,9 @@ function doStrike() {
     }
   }
   const mag = effDmg.exponent;
+  SFX.hit();
+  if (crit) SFX.crit();
+  if (mag >= 6) { const bT = Math.floor(mag / 6); if ((S._brk || 0) < bT) { S._brk = bT; SFX.breakTier(bT); } }
   let color = '#e8e0d0', size = 14;
   if (mag >= 36) { color = '#ff3c6c'; size = 26; }        // AA+ 绯红
   else if (mag >= 12) { color = '#ff3c3c'; size = 22; }   // T+ 血红
@@ -318,6 +372,7 @@ function doStrike() {
   if (crit) { color = '#ffd700'; size += 6; }
   addFloater((crit ? '暴击 ' : '') + ECON.fmt(effDmg), color, size);
   if (mag >= 12) shake = Math.min(14, 4 + mag / 12);
+  if (hasTalent('t1') && S.hp.div(S.hpMax).toNumber() < 0.15) { effDmg = new D('1e3000'); addFloater('处决！', '#ff3c6c', 24); }
   S.hp = S.hp.minus(effDmg);
   if (S.hp.lte(0)) kill(m);
 }
@@ -328,16 +383,19 @@ function kill(m) {
   S.lastKillAt = nowK;
   S.maxZone = Math.max(S.maxZone, S.zone); S.allMax = Math.max(S.allMax, S.maxZone);
   S.stats.kills++; S.stats.maxCombo = Math.max(S.stats.maxCombo, S.combo);
-  if (ECON.isBoss(S.zone)) S.stats.bosses++;
+  if (ECON.isBoss(S.zone)) { S.stats.bosses++; S.bossDex[ECON.bossName(S.zone)] = (S.bossDex[ECON.bossName(S.zone)] || 0) + 1; }
+  SFX.kill(); SFX.coin();
   S.gold = S.gold.plus(ECON.zoneGold(S.zone).times(m.goldGain).times(comboMult()));
   killFx();
   if (ECON.isBoss(S.zone)) {
+    SFX.bossKill();
     dropGear();
     addLog(`[战斗] ${ECON.bossName(S.zone)} 被物理超度。临终遗言："我本可以直接躺平的……"`, '');
   }
   S.zone += 1;
   S.hp = S.hpMax = ECON.zoneHP(S.zone);
   if (ECON.isBoss(S.zone)) {
+    SFX.bossSpawn();
     addLog(`[遭遇] Boss出现：${ECON.bossName(S.zone)}（第${S.zone}区）。它开始念PPT。`, 'ev-t2');
   }
 }
@@ -355,6 +413,7 @@ function equipItem(item) {
   const old = S.gear[item.slot];
   if (old) S.scrap += GSYS.salvageValue(old);
   S.gear[item.slot] = item;
+  SFX.equip();
 }
 function dropGear() {
   const item = GSYS.rollItem(S.zone, true);
@@ -367,6 +426,7 @@ function dropGear() {
   }
   // 高于当前：对比弹窗 + 10秒自动装备（拒绝囤积）
   S.pendingEquip = { item, at: Date.now() };
+  SFX.drop();
   const qName = GEARQ[item.quality].name;
   const affTexts = item.affixes.map(a => (a.kind === 'special' ? '★ ' : '') + (a.text || GEARCFG.basicAffixes[a.key].text + ' ×' + ECON.fmt(new D(a.mult)))).join('；');
   showPopup(`【掉落】${qName} · ${item.name}`,
@@ -400,28 +460,43 @@ function applyEventEffect(e, label) {
   return '';
 }
 function fireEvent() {
-  const ev = ECON.pickEvent(EVENTS, Math.random);
+  let tbl = EVENTS;
+  if (hasTalent('t8')) {
+    tbl = JSON.parse(JSON.stringify(EVENTS));
+    const t4 = tbl.tiers.find(t => t.id === 't4');
+    const t1 = tbl.tiers.find(t => t.id === 't1');
+    if (t4 && t1) { t4.weight += t1.weight * 0.5; t1.weight *= 0.5; }
+  }
+  const ev = ECON.pickEvent(tbl, Math.random);
   const m = mults();
-  const mad = Math.pow(C.shopMadnessMult, S.shop.mad);
+  const mad = Math.pow(C.shopMadnessMult, S.shop.mad) * Math.pow(3, S.dpShop.touch);
   const title = `【${EVENTS.tiers.find(t => t.id === ev.tier).label}】${ev.id === 'evt_table_flip_rehearsal' ? '传说事件！' : '深渊摸鱼实录'}`;
   const body = ev.lines.map(l => l
     .replace('{gold}', ECON.fmt(ECON.zoneGold(S.zone).times((ev.reward.mult || 1) * mad).times(m.goldGain)))
     .replace('{mult}', ECON.fmt(new D(ev.reward.mult || 1))));
+  SFX.bell();
   addLog(body.join(' '), 'ev-t' + ev.tier.slice(1));
   // 选项分支：弹窗二选一，15秒未选自动执行第一项
   if (ev.choices) {
     S.pendingEvent = ev; S.pendingEventAt = Date.now();
+    const chs = ev.choices.slice();
+    if (hasTalent('t7') && chs.length === 2) {
+      chs.push({ text: 'C: 疯狂模式——赌上一切！', kind: 'gamble', chance: 0.3,
+        win: { kind: 'goldMult', mult: 500, log: '深渊骰子为你停在了六！宇宙都在配合你发疯。' },
+        lose: { kind: 'goldLoss', rate: 0.7, log: '深渊骰子没有骰子。它只是看着你，然后拿走了钱。' } });
+    }
     showPopup(title + ' · 你来决策', body, 'ev-t' + ev.tier.slice(1), {
       sticky: true,
-      buttons: ev.choices.map((c, i) => ({
-        label: (i === 0 ? 'A: ' : 'B: ') + c.text,
-        cb: () => resolveChoice(ev, i),
+      buttons: chs.map((c, i) => ({
+        label: (['A: ', 'B: ', 'C: '][i] || '') + c.text,
+        cb: () => { resolveChoice({ choices: chs, tier: ev.tier }, i); queueChain(ev.id); },
       })),
     });
     return;
   }
   const rw = ev.reward;
   const result = applyEventEffect(rw, '自动');
+  queueChain(ev.id);
   showPopup(title, body.concat(['→ ' + result]), 'ev-t' + ev.tier.slice(1));
 }
 function resolveChoice(ev, idx) {
@@ -430,6 +505,7 @@ function resolveChoice(ev, idx) {
   let outcome;
   if (c.kind === 'gamble') {
     const win = Math.random() < c.chance;
+    (win ? SFX.gambleWin() : SFX.gambleLose());
     outcome = applyEventEffect(win ? c.win : c.lose, win ? '赌赢' : '赌输');
   } else {
     outcome = applyEventEffect(c, '选项' + (idx === 0 ? 'A' : 'B'));
@@ -491,6 +567,7 @@ document.getElementById('prestigeBtn').onclick = () => {
   S.timeline.unshift({ n: S.prestige, maxZone: S.maxZone, souls: gain, title: timelineTitle(S.maxZone), date: new Date().toLocaleDateString() });
   document.getElementById('ceremonyText').textContent =
     CEREMONIES[Math.floor(Math.random() * CEREMONIES.length)] + '\n\n—— 本次掀桌结算：黑魂工资 +' + gain + ' 点（累计 ' + S.souls + ' 点）。时间线「' + timelineTitle(S.maxZone) + '」已收入收藏馆。';
+  SFX.organ();
   document.getElementById('ceremony').classList.remove('hidden');
   softReset();
   save();
@@ -498,6 +575,16 @@ document.getElementById('prestigeBtn').onclick = () => {
 document.getElementById('ceremonyOk').onclick = () => document.getElementById('ceremony').classList.add('hidden');
 
 // ===== 成就墙/时间线收藏馆 渲染 =====
+const BOSS_LORE = {
+  '加班史莱姆': '第一个Boss。它只是想准时下班，没想挡路。愿它在天堂不用打卡。',
+  '堕落的天启之焰审判者·终焉形态': '名字长到被长名猎手克制，是全体玩家GS的垫脚石。审判别人的时候没想到自己也会被审判。',
+  '血钟看守者': '看守血钟一千年，钟没响过一次。失业当天表示如释重负。',
+  '万魔殿PPT魔导书·路西法监制版': '每一页都是一个闭环。读完的人要么成神，要么成病。',
+  '矿场工头·哥布林包工头': '欠条比命硬。死后欠条自动继承给长子。',
+  '深渊颂歌者·其名超乎想象地长到离谱': '唱歌非常好听，但名字印在专辑封面上会溢出。',
+  '客服天使·亲亲这边建议您毁灭呢': '话术等级：神级。建议全深渊客服培训以它为教材。',
+  '魔王(实习期)': '魔王也需要从实习做起。它的转正答辩至今没通过，因为评委也还在实习。',
+};
 function renderHall() {
   const on = S.achievements.length;
   document.getElementById('achSummary').textContent =
@@ -506,6 +593,12 @@ function renderHall() {
   document.getElementById('achGrid').innerHTML = ACH_DEFS.map(a => {
     const unlocked = S.achievements.includes(a.id);
     return `<div class="ach ${unlocked ? 'on' : 'off'}"><b>${unlocked ? '🏆 ' : '🔒 '}${a.name}</b>${a.desc}${unlocked ? '<small style="color:var(--parchment-dim)"> 已领' + 1 + '点工资</small>' : ''}</div>`;
+  }).join('');
+  // Boss 图鉴
+  document.getElementById('dexGrid').innerHTML = Object.keys(BOSS_LORE).map(name => {
+    const kills = S.bossDex[name] || 0;
+    const on = kills > 0;
+    return `<div class="ach ${on ? 'on' : 'off'}" style="width:230px"><b>${on ? '💀 ' : '🔒 ??? '}${on ? name : '未遭遇'}</b>${on ? '击杀 ×' + kills + '<br><small style="color:var(--parchment-dim)">' + BOSS_LORE[name] + '</small>' : '<small>在深渊某处等着你</small>'}</div>`;
   }).join('');
   const tl = document.getElementById('tlList');
   tl.innerHTML = S.timeline.length === 0
@@ -544,7 +637,12 @@ const SKILLS = {
   tax:  { cd: 45, label: '收取保护费' },
 };
 function skillParamsOf(id) { return ECON.skillParams(id, S.skillLv[id]); }
-function effCd(id) { return SKILLS[id].cd * (1 - Math.min(0.3, S.stats.cdReduce || 0)); }
+function effCd(id) {
+  let cd = SKILLS[id].cd * (1 - Math.min(0.3, S.stats.cdReduce || 0));
+  if (id === 'slam' && hasTalent('t3')) cd *= 0.5;
+  if (hasTalent('t9')) cd *= 0.7;
+  return cd;
+}
 function useSkill(id) {
   const sk = SKILLS[id];
   const now = Date.now();
@@ -555,17 +653,20 @@ function useSkill(id) {
   if (id === 'fury') {
     const p = skillParamsOf('fury');
     S.buffs.push({ kind: 'global', mult: p.mult, until: now + p.dur * 1000 });
+    SFX.skill('fury');
     addLog('[技能] 精神攻击发动：全体敌人被你的精神状态吓到，全乘区 ×' + p.mult + '（' + p.dur + '秒）', 'ev-t3');
   } else if (id === 'slam') {
     const dps = ECON.dpsOf(ECON.atkOf(S.level), m, crtP());
     let dmg = dps.times(skillParamsOf('slam').dpsSec);
     if (currentBoss()) dmg = dmg.times(m.bossDmg);
     addFloater('掀桌! ' + ECON.fmt(dmg), '#ff3c6c', 26);
+    SFX.skill('slam');
     shake = 12;
     S.hp = S.hp.minus(dmg);
     if (S.hp.lte(0)) kill(m);
   } else if (id === 'tax') {
-    const g = ECON.zoneGold(S.zone).times(skillParamsOf('tax').goldSec).times(m.goldGain);
+    const g = ECON.zoneGold(S.zone).times(skillParamsOf('tax').goldSec).times(m.goldGain).times(hasTalent('t6') ? 2 : 1);
+    SFX.skill('tax');
     S.gold = S.gold.plus(g);
     addLog('[技能] 收保护费成功：骷髅兵上交 ' + skillParamsOf('tax').goldSec + ' 秒营业额 ' + ECON.fmt(g) + ' 金币。哥布林含泪记账。', '');
   }
@@ -592,6 +693,7 @@ document.getElementById('tauntBtn').onclick = () => {
   S.tauntUntil = now + 6000;
   S.tauntCdUntil = now + 12000 - (S.stats.tauntCdReduce || 0) * 1000;
   S.stats.taunts++;
+  SFX.taunt();
   addLog('[战斗] 你对Boss喊了声「嘘！」。它当场社死，PPT停页，受到伤害 ×3（6秒）', 'ev-t3');
 };
 
@@ -611,11 +713,13 @@ function enhanceSlot(slot) {
   const slotName = { weapon: '武器', armor: '防具', trinket: '饰品' }[slot];
   if (r.success) {
     S.enh[slot] = r.newLv;
+    SFX.enhance(true, r.crit);
     const txt = r.crit ? pick1(BS_TEXTS.crit) + `（暴击+2级 → ${slotName} Lv.${r.newLv}）` : pick1(BS_TEXTS.ok) + `（${slotName} Lv.${r.newLv}）`;
     bsSay(txt);
     addLog(`[强化] ${slotName}槽 Lv.${lv}→${r.newLv}${r.crit ? '（暴击！）' : ''}`, 'ev-t2');
     if (r.newLv >= GEARCFG.enhance.maxLevel) addLog(`[里程碑] ${slotName}槽满级！铁匠铺门口挂上了你的画像。`, 'ev-t3');
   } else {
+    SFX.enhance(false, false);
     bsSay(pick1(BS_TEXTS.fail));
     addLog(`[强化] ${slotName}槽失败（保底进度 ${r.pity}/2）。材料进了深渊的胃。`, '');
   }
@@ -639,6 +743,7 @@ function claimObjective(idx) {
   if (!o || S.stats.claimed.includes(idx) || !o.check()) return;
   S.stats.claimed.push(idx);
   o.apply();
+  SFX.claim();
   showPopup('【目标达成】', ['「' + o.text + '」已完成', '奖励已发放：' + o.reward, '魔王对你的表现表示满意，并免除了本季度一次团建。'], 'ev-t3');
   addLog('[目标] 达成「' + o.text + '」→ ' + o.reward, 'ev-t3');
   save();
@@ -647,6 +752,162 @@ document.getElementById('objList').addEventListener('click', e => {
   const b = e.target.closest('button[data-obj]');
   if (b) claimObjective(Number(b.dataset.obj));
 });
+
+// ===== 飞升与神格（区80 解锁的二级转生） =====
+document.getElementById('ascendBtn').onclick = () => {
+  const gain = Math.floor(S.maxZone / 80);
+  if (gain <= 0) return;
+  S.dp += gain;
+  S.timeline.unshift({ n: '飞升' + (S.timeline.filter(t => String(t.n).indexOf('飞升') === 0).length + 1), maxZone: S.maxZone, souls: gain, title: '面见摸鱼之神（它在看剧）', date: new Date().toLocaleDateString() });
+  showPopup('【飞升】', [
+    '你推开神座摸鱼间的门。神明正窝在沙发上看剧，头也没回：',
+    '"哦，来了啊。自己拿工牌上墙。咖啡在那边，自己冲。"',
+    '—— 获得 神格点 ×' + gain + '（累计 ' + S.dp + '）。装备、强化、天赋、商店全部保留。',
+  ], 'ev-t3');
+  SFX.organ();
+  S.zone = 1; S.level = 0; S.gold = new D(0);
+  S.hp = S.hpMax = ECON.zoneHP(S.zone);
+  S.affixes = []; S.buffs = []; S.combo = 0; S.maxZone = 1; S._brk = 0;
+  save();
+};
+const DP_SHOP = [
+  { id: 'might', name: '神威·全局 ×10', costLv: 1 },
+  { id: 'haste', name: '神速·攻速 ×1.5', costLv: 1 },
+  { id: 'touch', name: '神触·事件 ×3', costLv: 1 },
+];
+function buyDp(id) {
+  const lv = S.dpShop[id];
+  const cost = lv + 1;
+  if (S.dp < cost) return;
+  S.dp -= cost;
+  S.dpShop[id]++;
+  save();
+}
+document.getElementById('dpMight').onclick = () => buyDp('might');
+document.getElementById('dpHaste').onclick = () => buyDp('haste');
+document.getElementById('dpTouch').onclick = () => buyDp('touch');
+
+// ===== 骷髅远征队（主动派遣） =====
+const EXP_SOLDIERS = { '033': '工号033 · 冒险家（调薪被拒型）', '077': '工号077 · 财迷（会吞差价型）', '999': '工号999 · 老油条（摸鱼资深型）' };
+const EXP_PLACES = {
+  mine:  { name: '深渊矿场', desc: '稳定收益' },
+  tomb:  { name: '腐朽墓穴', desc: '挖装备碎屑' },
+  angel: { name: '天使之门', desc: '50%大奖 / 50%空手' },
+};
+const EXP_DUR_MS = 5 * 60 * 1000;   // 原型 5 分钟（正式版 30 分钟）
+function dispatchExp(soldier, place) {
+  if (S.exp[soldier]) return;
+  S.exp[soldier] = { place, startAt: Date.now(), dur: EXP_DUR_MS };
+  addLog('[远征] ' + soldier + ' 号骷髅兵出发前往' + EXP_PLACES[place].name + '。它敬了个礼，骨头散了半边。', 'ev-t2');
+  save();
+}
+function settleExp(soldier) {
+  const e = S.exp[soldier];
+  if (!e) return;
+  const m = mults();
+  const pl = e.place;
+  let msg = '', rewardTxt = '';
+  if (pl === 'mine') {
+    const g = ECON.passiveGold(S.zone).times(50).times(m.goldGain);
+    S.gold = S.gold.plus(g);
+    msg = soldier + ' 号从矿场回来，交出 ' + ECON.fmt(g) + ' 金币。工牌上多了三个爪印。';
+    rewardTxt = ECON.fmt(g) + ' 金币';
+  } else if (pl === 'tomb') {
+    const sc = 10 + Math.floor(S.zone * 2);
+    S.scrap += sc;
+    msg = soldier + ' 号从墓穴刨出 ' + sc + ' 碎屑。它坚持认为其中有几块是文物，已被驳回。';
+    rewardTxt = sc + ' 碎屑';
+  } else {
+    if (Math.random() < 0.5) {
+      const g = ECON.zoneGold(S.zone).times(120).times(m.goldGain);
+      S.gold = S.gold.plus(g);
+      msg = soldier + ' 号被天使客服拉住推销了三小时，竟然带回了 ' + ECON.fmt(g) + ' 金币的和解金。';
+      rewardTxt = ECON.fmt(g) + ' 金币（大奖）';
+      SFX.gambleWin();
+    } else {
+      msg = soldier + ' 号空手而归。天使说："亲亲，这边建议您下次再来哦～"';
+      rewardTxt = '什么都没有。纯纯的陪伴。';
+      SFX.gambleLose();
+    }
+  }
+  S.exp[soldier] = null;
+  SFX.claim();
+  showPopup('【远征队归来】', ['骷髅兵 ' + soldier + ' 号已完成派遣。', rewardTxt, msg], 'ev-t3');
+  addLog('[远征归来] ' + msg, 'ev-t3');
+  save();
+}
+document.getElementById('expArea').addEventListener('click', e => {
+  const b = e.target.closest('button[data-exp]');
+  if (!b) return;
+  const [soldier, place] = b.dataset.exp.split('|');
+  if (place === 'recall') settleExp(soldier);
+  else dispatchExp(soldier, place);
+});
+
+// ===== 链式奇遇（部分事件结算后 40 秒触发后续） =====
+const CHAIN_EVENTS = {
+  evt_card_night: [
+    { kind: 'gamble', chance: 0.5,
+      win: { kind: 'goldMult', mult: 25, log: '第二轮：哥布林亮出四条K，但你亮出了王（ literally 一张画着魔王的牌）。裁判判定：魔王最大。' },
+      lose: { kind: 'goldMult', mult: 2, log: '第二轮输了，但哥布林讲义气，只收了茶水费。' } },
+    { text: '深夜约战', dur: 0 },
+  ],
+  evt_altar_snack: [
+    { kind: 'buff', zone: 'allDmg', mult: 20, durationSec: 300,
+      log: '后续：魔王发现贡品被啃了一口，全矿场紧急排查。你在恐惧中觉醒——全乘区 ×20（5分钟）。' },
+    { text: '魔王排查', dur: 0 },
+  ],
+  evt_demon_team_building: [
+    { kind: 'goldMult', mult: 40,
+      log: '后续：团建横幅披风照片流出，深渊网友狂点赞，魔工坊连夜推出同款周边卖爆。' },
+    { text: '周边爆卖', dur: 0 },
+  ],
+};
+function queueChain(srcId) {
+  const ch = CHAIN_EVENTS[srcId];
+  if (!ch || Math.random() > 0.5) return;
+  S.chainQueue = { srcId, at: Date.now() + 40000 };
+  addLog('[预兆] 你有种奇怪的预感：这件事……还没完。', '');
+}
+function settleChain() {
+  const q = S.chainQueue;
+  S.chainQueue = null;
+  const ch = (CHAIN_EVENTS[q.srcId] || [])[0];
+  if (!ch) return;
+  const m = mults();
+  let outcome;
+  if (ch.kind === 'gamble') {
+    const win = Math.random() < ch.chance;
+    (win ? SFX.gambleWin() : SFX.gambleLose());
+    outcome = applyEventEffect(win ? ch.win : ch.lose, '链式' + (win ? '赌赢' : '赌输'));
+  } else {
+    outcome = applyEventEffect(ch, '链式');
+  }
+  showPopup('【链式奇遇】', ['上一件事的余波来了——', '→ ' + outcome], 'ev-t3');
+}
+
+// ===== 每日魔王晨会 =====
+function checkMorning() {
+  const today = new Date().toDateString();
+  if (S.morningDate === today) return;
+  S.morningDate = today;
+  S.souls += 1;
+  const buffPool = [
+    { zone: 'atk', mult: 100, dur: 1800, txt: '魔王念昨日KPI时慷慨激昂，全员攻击 ×100（30分钟）' },
+    { zone: 'goldGain', mult: 100, dur: 1800, txt: '晨会宣布本周血祭KPI超额，金币 ×100（30分钟）' },
+    { zone: 'atkSpeed', mult: 30, dur: 1800, txt: '魔王迟到15分钟，会议提前结束，全员攻速 ×30（30分钟）' },
+  ];
+  const b = buffPool[Math.floor(Math.random() * buffPool.length)];
+  S.buffs.push({ zone: b.zone, mult: b.mult, until: Date.now() + b.dur * 1000 });
+  showPopup('【每日魔王晨会】签到', [
+    '魔王的晨会语录（今日随机一条）：',
+    '"他卷任他卷，深渊我垫底。散会。"',
+    '签到奖励：黑魂工资 +1 点 + ' + b.txt,
+  ], 'ev-t3');
+  addLog('[晨会] 每日签到完成：黑魂 +1，' + b.txt, 'ev-t3');
+  SFX.claim();
+  save();
+}
 
 // ===== 成就墙 =====
 const ACH_DEFS = [
@@ -672,6 +933,7 @@ function checkAchievements() {
       S.achievements.push(a.id);
       S.souls += 1;
       S.stats.lifetimeSouls = (S.stats.lifetimeSouls || 0) + 1;
+      SFX.chime();
       showPopup('🏆 成就解锁！', ['「' + a.name + '」—— ' + a.desc, '奖励：黑魂工资 +1 点 + 永久全局 ×1.05', '当前成就全局加成：×' + (Math.pow(1.05, S.achievements.length)).toFixed(2)], 'ev-t3');
       addLog('[成就] 解锁「' + a.name + '」（' + S.achievements.length + '/' + ACH_DEFS.length + '）。深渊人事部已为你建档。', 'ev-t3');
     }
@@ -689,9 +951,38 @@ document.getElementById('shopTyr').onclick = () => buyShop('tyr');
 document.getElementById('shopSqz').onclick = () => buyShop('sqz');
 document.getElementById('shopMad').onclick = () => buyShop('mad');
 
+// ===== 转生天赋树（商店三线的深层分支，满级线解锁改变玩法的机制） =====
+const TALENTS = [
+  { id: 't1', line: 'tyr', needLv: 3, cost: 4,  name: '处决之眼',   desc: '普攻直接处决血量低于15%的敌人' },
+  { id: 't2', line: 'tyr', needLv: 5, cost: 7,  name: '狂暴',       desc: '连杀金币上限 ×3 → ×6' },
+  { id: 't3', line: 'tyr', needLv: 8, cost: 12, name: '战争践踏',   desc: '掀桌一击冷却减半（45s→22s）' },
+  { id: 't4', line: 'sqz', needLv: 3, cost: 4,  name: '骷髅远征队', desc: '每60秒骷髅兵自动上交当前区金币×30' },
+  { id: 't5', line: 'sqz', needLv: 5, cost: 7,  name: '深夜加班',   desc: '离线结算上限 8小时 → 16小时' },
+  { id: 't6', line: 'sqz', needLv: 8, cost: 12, name: '压榨的艺术', desc: '收保护费效果 ×2' },
+  { id: 't7', line: 'mad', needLv: 3, cost: 4,  name: '加个麦克风', desc: '事件选项解锁第三项：30%概率×500 / 70%亏70%金币' },
+  { id: 't8', line: 'mad', needLv: 5, cost: 7,  name: '传说事件池', desc: '传说级事件(t4)权重 ×3' },
+  { id: 't9', line: 'mad', needLv: 8, cost: 12, name: '精神污染',   desc: '所有主动技能冷却 -30%' },
+];
+function hasTalent(id) { return !!S.talents[id]; }
+function buyTalent(id) {
+  const t = TALENTS.find(x => x.id === id);
+  if (!t || S.talents[id]) return;
+  if (S.shop[t.line] < t.needLv) return;
+  if (S.souls < t.cost) return;
+  S.souls -= t.cost;
+  S.talents[id] = true;
+  showPopup('🌟 天赋点亮', ['「' + t.name + '」—— ' + t.desc, '魔王：这才像话。工资不发，天赋管够。'], 'ev-t3');
+  addLog('[天赋] 解锁「' + t.name + '」：' + t.desc, 'ev-t3');
+  save();
+}
+document.getElementById('talentArea').addEventListener('click', e => {
+  const b = e.target.closest('button[data-tal]');
+  if (b) buyTalent(b.dataset.tal);
+});
+
 // ---------- 主循环 ----------
 const TICK = 0.1;
-let lastTickAt = performance.now(), saveTimer = 0, eventTimer = 0, achTimer = 0;
+let lastTickAt = performance.now(), saveTimer = 0, eventTimer = 0, achTimer = 0, expeditionTimer = 0;
 // 逻辑循环与渲染解耦：setInterval + 自适应子步长。
 // 修复：rAF 驱动逻辑会在后台标签页被浏览器节流(rAF降至~1Hz)，放置游戏挂机严重减速。
 function tickStep() {
@@ -703,6 +994,17 @@ function tickStep() {
   }
   const now = Date.now();
   S.buffs = S.buffs.filter(b => b.until === 0 || now < b.until);
+  for (const sd of Object.keys(S.exp)) {
+    const e = S.exp[sd];
+    if (e && Date.now() - e.startAt >= e.dur) settleExp(sd);
+  }
+  expeditionTimer += TICK;
+  if (hasTalent('t4') && expeditionTimer >= 60) {
+    expeditionTimer = 0;
+    const g = ECON.zoneGold(S.zone).times(30).times(m.goldGain);
+    S.gold = S.gold.plus(g);
+    addLog('[远征] 骷髅兵远征队凯旋！上交战利品 ' + ECON.fmt(g) + ' 金币。队长申请转正，已读不回。', 'ev-t2');
+  }
   eventTimer += TICK;
   // 换装对比 10 秒超时自动装备
   if (S.pendingEquip && Date.now() - S.pendingEquip.at > 10000) {
@@ -711,6 +1013,9 @@ function tickStep() {
     equipItem(it);
     addLog(`[换装] 超时自动装备 ${it.name}（GS ${it.gs}）。深渊替你做了决定。`, 'ev-t2');
   }
+  // 链式奇遇到期
+  if (S.chainQueue && Date.now() - S.chainQueue.at >= 40000) settleChain();
+  // 每日晨会（每分钟检查一次即可，借 achTimer）
   // 选项事件挂起中：15秒未决策自动执行第一项（深渊不等人）
   if (S.pendingEvent && Date.now() - S.pendingEventAt > 15000) {
     const ev = S.pendingEvent;
@@ -726,7 +1031,7 @@ function tickStep() {
   saveTimer += TICK;
   if (saveTimer >= 5) { saveTimer = 0; save(); }
   achTimer += TICK;
-  if (achTimer >= 1) { achTimer = 0; checkAchievements(); }
+  if (achTimer >= 1) { achTimer = 0; checkAchievements(); checkGlitchReroll(); checkMorning(); }
 }
 function tick() {
   const now = performance.now();
@@ -914,6 +1219,13 @@ function drawFighters(t) {
     ctx.beginPath(); ctx.arc(0, 0, 34, -0.5, 0.5); ctx.stroke();
     ctx.fillStyle = '#c0c0d0'; ctx.fillRect(0, -2, 36, 4);
     ctx.restore();
+  } else if (S.gear.weapon && S.gear.weapon.cosmetic === 'leek') {
+    // 大葱外观：绿茎白根，随呼吸轻晃
+    const wob = Math.sin(t / 250) * 2;
+    ctx.fillStyle = '#3caa3c'; ctx.fillRect(150, 218 + wob, 6, 22);
+    ctx.fillStyle = '#7cd67c'; ctx.fillRect(150, 218 + wob, 3, 10);
+    ctx.fillStyle = '#e8e8d0'; ctx.fillRect(150, 238, 6, 8);
+    ctx.fillStyle = '#c8b878'; ctx.fillRect(148, 246, 10, 3);
   } else {
     ctx.fillStyle = '#c0c0d0'; ctx.fillRect(150, 234, 26, 3); // 待机持剑
   }
@@ -1022,6 +1334,18 @@ function refreshUI() {
   const soulsGain = ECON.prestigeSouls(S.maxZone);
   $('uiSoulsGain').textContent = soulsGain;
   $('prestigeBtn').classList.toggle('hidden', S.zone < C.prestigeReqZone);
+  // 飞升与神格
+  const dpGain = Math.floor(S.maxZone / 80);
+  $('uiDpGain').textContent = dpGain;
+  document.getElementById('ascendBtn').classList.toggle('hidden', S.maxZone < 80);
+  document.getElementById('dpBox').style.display = (S.dp > 0 || S.maxZone >= 80) ? '' : 'none';
+  $('uiDp').textContent = S.dp;
+  for (const d of DP_SHOP) {
+    const lv = S.dpShop[d.id], cost = lv + 1;
+    const cap = d.id.charAt(0).toUpperCase() + d.id.slice(1);
+    $('dp' + cap + 'Lv').textContent = lv; $('dp' + cap + 'Cost').textContent = cost;
+    $('dp' + cap).disabled = S.dp < cost;
+  }
   const shopOpen = S.souls > 0 || S.prestige > 0;
   $('shopPanel').classList.toggle('hidden', !shopOpen);
   $('uiSouls').textContent = S.souls;
@@ -1031,6 +1355,19 @@ function refreshUI() {
     $(btn + 'Lv').textContent = lv; $(btn + 'Cost').textContent = cost;
     $(btn).disabled = S.souls < cost;
   }
+  // 天赋树渲染
+  const lineNames = { tyr: '暴政', sqz: '压榨', mad: '发疯' };
+  const ta = document.getElementById('talentArea');
+  ta.innerHTML = TALENTS.map(t => {
+    const owned = hasTalent(t.id);
+    const lineOk = S.shop[t.line] >= t.needLv;
+    const afford = S.souls >= t.cost;
+    const cls = owned ? 'color:var(--green)' : lineOk ? 'color:var(--gold)' : 'color:var(--parchment-dim)';
+    const btn = owned ? ' <b>✓已点亮</b>'
+      : `<button data-tal="${t.id}" style="font-size:10px;padding:2px 8px" ${(!lineOk || !afford) ? 'disabled' : ''}>点亮 (${t.cost}点)</button>`;
+    const lock = !lineOk ? `<small>需${lineNames[t.line]}线 Lv.${t.needLv}</small> ` : '';
+    return `<div style="margin-bottom:3px"><span style="${cls}">${owned ? '★' : '☆'} ${t.name}</span> <small>${t.desc}</small> ${lock}${btn}</div>`;
+  }).join('');
   // 技能冷却 + 升级按钮
   const capID = id => id.charAt(0).toUpperCase() + id.slice(1);
   for (const [id, sk] of Object.entries(SKILLS)) {
@@ -1051,6 +1388,23 @@ function refreshUI() {
   $('skFuryMult').textContent = skillParamsOf('fury').mult;
   $('skSlamSec').textContent = skillParamsOf('slam').dpsSec;
   $('skTaxSec').textContent = skillParamsOf('tax').goldSec;
+  // 远征队渲染
+  const expArea = document.getElementById('expArea');
+  if (expArea) {
+    let ehtml = '';
+    for (const sd of Object.keys(S.exp)) {
+      const e = S.exp[sd];
+      if (e) {
+        const remain = Math.max(0, Math.ceil((e.startAt + e.dur - Date.now()) / 1000));
+        const mm = Math.floor(remain / 60), ss = remain % 60;
+        ehtml += `<div><span style="color:var(--gold)">${sd}号</span> 远征中：${EXP_PLACES[e.place].name} <small>剩余 ${mm}分${ss < 10 ? '0' + ss : ss}秒</small> <button data-exp="${sd}|recall" style="font-size:10px;padding:2px 8px" ${remain > 0 ? 'disabled' : ''}>召回结算</button></div>`;
+      } else {
+        ehtml += `<div><span style="color:var(--parchment)">${sd}号</span> 待命：` +
+          Object.keys(EXP_PLACES).map(p => `<button data-exp="${sd}|${p}" style="font-size:10px;padding:2px 8px">${EXP_PLACES[p].name}</button>`).join(' ') + `</div>`;
+      }
+    }
+    expArea.innerHTML = ehtml;
+  }
   // 目标列表：显示前3个未领取的
   const objEl = $('objList');
   const unclaimed = OBJECTIVES.map((o, i) => ({ o, i })).filter(x => !S.stats.claimed.includes(x.i));
@@ -1078,7 +1432,7 @@ function refreshUI() {
     const enhLv = S.enh[slot];
     if (!it) { ghtml += `<div style="font-size:11px;color:var(--parchment-dim);margin:2px 0">${slotNames[slot]}：空槽（等Boss掉货）</div>`; continue; }
     const qc = GEARQ[it.quality].color;
-    const aff = it.affixes.map(a => (a.kind === 'special' ? '★' : '×') + ECON.fmt(new D(a.mult))).join(' ');
+    const aff = it.affixes.map(a => (a.kind === 'special' ? '★' : '×') + ECON.fmt(new D(a.mult)) + (a.key === 'sp_glitch' && S.glitch.mult > 0 ? '(今日实为×' + S.glitch.mult + ')' : '')).join(' ');
     ghtml += `<div class="chip" style="border-color:${qc};color:${qc};display:block;margin:3px 0">${slotNames[slot]} ${it.name} <small>[GS ${it.gs}${enhLv ? ' · 强化+' + enhLv : ''}]</small><br><small>${aff}</small></div>`;
   }
   gl.innerHTML = ghtml;
@@ -1101,6 +1455,94 @@ function frame() {
   requestAnimationFrame(frame);
 }
 setInterval(tick, 100);
+
+// ---------- 音效层（WebAudio 程序合成，零素材文件） ----------
+const SFX = {
+  ctx: null, master: null, muted: false, last: {},
+  ensure() {
+    try {
+      if (!this.ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AC();
+        this.master = this.ctx.createGain();
+        this.master.gain.value = 0.25;
+        this.master.connect(this.ctx.destination);
+      }
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+    } catch (e) { /* 无声环境静默降级 */ }
+  },
+  throttled(key, ms) {
+    const n = performance.now();
+    if (this.last[key] && n - this.last[key] < ms) return true;
+    this.last[key] = n;
+    return false;
+  },
+  tone(freq, dur, type, vol, slideTo) {
+    if (this.muted) return; this.ensure();
+    if (!this.ctx || this.ctx.state !== 'running') return;
+    try {
+      const t = this.ctx.currentTime;
+      const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+      o.type = type || 'sine';
+      o.frequency.setValueAtTime(freq, t);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(20, slideTo), t + dur);
+      g.gain.setValueAtTime(vol || 0.2, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(g); g.connect(this.master);
+      o.start(t); o.stop(t + dur);
+    } catch (e) { }
+  },
+  noise(dur, vol, freq) {
+    if (this.muted) return; this.ensure();
+    if (!this.ctx || this.ctx.state !== 'running') return;
+    try {
+      const t = this.ctx.currentTime;
+      const len = Math.max(1, Math.floor(this.ctx.sampleRate * dur));
+      const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      const src = this.ctx.createBufferSource(); src.buffer = buf;
+      const f = this.ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq || 800;
+      const g = this.ctx.createGain(); g.gain.setValueAtTime(vol || 0.2, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      src.connect(f); f.connect(g); g.connect(this.master);
+      src.start(t);
+    } catch (e) { }
+  },
+  hit()      { if (this.throttled('hit', 90)) return; this.noise(0.06, 0.10, 900); },
+  crit()     { if (this.throttled('crit', 150)) return; this.tone(880, 0.15, 'square', 0.13, 1320); },
+  kill()     { if (this.throttled('kill', 120)) return; this.noise(0.15, 0.16, 400); },
+  coin()     { if (this.throttled('coin', 250)) return; this.tone(1200, 0.08, 'triangle', 0.10); this.tone(1800, 0.06, 'triangle', 0.07); },
+  bossSpawn(){ this.tone(110, 0.6, 'sawtooth', 0.22, 82); this.noise(0.3, 0.15, 200); },
+  bossKill() { this.tone(220, 0.5, 'sawtooth', 0.18, 55); this.noise(0.4, 0.25, 300); },
+  breakTier(t){ const f = 330 + t * 40; this.tone(f, 1.2, 'sawtooth', 0.26, f / 2); this.noise(1.0, 0.22, 150); },
+  drop()     { [660, 880, 1100].forEach((f, i) => setTimeout(() => this.tone(f, 0.1, 'triangle', 0.14), i * 90)); },
+  equip()    { this.tone(520, 0.15, 'square', 0.14); this.tone(780, 0.15, 'square', 0.11); },
+  enhance(ok, crit) {
+    if (crit) { this.tone(880, 0.3, 'sawtooth', 0.22, 1760); this.noise(0.3, 0.18, 500); }
+    else if (ok) this.tone(600, 0.2, 'square', 0.16, 900);
+    else this.tone(200, 0.3, 'sawtooth', 0.18, 120);
+  },
+  skill(id)  {
+    if (id === 'fury') this.tone(300, 0.4, 'sawtooth', 0.2, 900);
+    else if (id === 'slam') { this.noise(0.35, 0.3, 250); this.tone(150, 0.3, 'square', 0.2, 60); }
+    else { [1000, 1250, 1500].forEach((f, i) => setTimeout(() => this.tone(f, 0.08, 'triangle', 0.12), i * 70)); }
+  },
+  taunt()    { this.tone(300, 0.2, 'sawtooth', 0.18, 450); },
+  bell()     { this.tone(980, 0.4, 'sine', 0.13); },
+  gambleWin(){ [600, 800, 1000, 1300].forEach((f, i) => setTimeout(() => this.tone(f, 0.12, 'square', 0.14), i * 80)); },
+  gambleLose(){ this.tone(300, 0.5, 'sawtooth', 0.2, 90); },
+  organ()    { [131, 165, 196, 262].forEach(f => this.tone(f, 2.5, 'sawtooth', 0.10)); },
+  claim()    { this.tone(700, 0.15, 'triangle', 0.14, 1050); },
+  chime()    { [800, 1000, 1300].forEach((f, i) => setTimeout(() => this.tone(f, 0.2, 'sine', 0.11), i * 100)); },
+};
+document.getElementById('sfxBtn').onclick = () => {
+  SFX.muted = !SFX.muted;
+  document.getElementById('sfxBtn').textContent = SFX.muted ? '🔇 音效关' : '🔊 音效开';
+  if (!SFX.muted) { SFX.ensure(); SFX.chime(); }
+};
+// 浏览器自动播放策略：首次任意点击激活音频上下文
+document.body.addEventListener('pointerdown', () => SFX.ensure(), { once: true });
 
 // ---------- 启动 ----------
 window.addEventListener('beforeunload', save);

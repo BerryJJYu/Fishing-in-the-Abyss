@@ -197,8 +197,8 @@
 
   // ---------- 离线快进（按击杀事件结算，非逐 tick） ----------
   // 返回 {goldGained, zonesCleared, secondsUsed}
-  function simulateOffline(state, affixTable, seconds, now, squeezeMult) {
-    const cap = Math.min(seconds, CONFIG.offlineCapSec);
+  function simulateOffline(state, affixTable, seconds, now, squeezeMult, capSec) {
+    const cap = Math.min(seconds, capSec || CONFIG.offlineCapSec);
     let t = 0, zones = 0, gold = new Decimal(0);
     const mults = computeMults(state.affixes, affixTable, null, state.buffs, state.prestigeMult, now);
     const dps = dpsOf(atkOf(state.level), mults).times(mults.offlineGain);
