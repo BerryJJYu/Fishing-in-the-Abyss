@@ -41,6 +41,9 @@
   .flex1 { flex: 1; min-width: 260px; }
   #panel2 button { min-width: 120px; }
   #panel2 button:disabled { opacity: 0.35; }
+  #gearList .chip { white-space: normal; line-height: 1.5; }
+  #panel3 button { font-size: 11px; }
+  #panel3 button:disabled { opacity: 0.35; }
   .boxtitle { color: var(--parchment-dim); font-size: 11px; margin-bottom: 5px; letter-spacing: 2px; }
   #popup {
     position: fixed; right: 16px; bottom: 16px; width: 300px; background: var(--panel2);
@@ -51,6 +54,16 @@
   #popup .close { float: right; cursor: pointer; color: var(--parchment-dim); }
   .hidden { display: none !important; }
   #ceremony { position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 100; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+  #hallModal { position: fixed; inset: 0; background: rgba(0,0,0,.88); z-index: 100; display: flex; align-items: center; justify-content: center; }
+  #hallInner { background: var(--panel2); border: 1px solid var(--gold); border-radius: 6px; padding: 16px; width: min(640px, 92vw); max-height: 86vh; overflow-y: auto; }
+  #hallInner h2 { color: var(--gold); font-size: 18px; letter-spacing: 4px; margin-bottom: 4px; }
+  #hallInner h3 { color: var(--parchment); font-size: 13px; margin: 12px 0 6px; }
+  .ach { display: inline-block; width: 180px; margin: 4px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 11px; vertical-align: top; }
+  .ach.on { border-color: var(--gold); color: var(--gold); background: #2a2010; }
+  .ach.off { color: #5a4a3a; }
+  .ach b { display: block; font-size: 12px; }
+  .tl { border-left: 3px solid var(--blood); padding: 4px 10px; margin: 6px 0; font-size: 12px; color: var(--parchment); }
+  .tl small { color: var(--parchment-dim); }
   #ceremony h2 { color: var(--blood-bright); font-size: 30px; letter-spacing: 10px; text-shadow: 0 0 20px #800; margin-bottom: 12px; }
   #ceremony p { color: var(--parchment); max-width: 480px; text-align: center; line-height: 1.8; margin-bottom: 18px; }
 </style>
@@ -63,7 +76,20 @@
   <div class="stat"><div class="k">金币</div><div class="v" id="uiGold">0</div></div>
   <div class="stat"><div class="k">战力 DPS</div><div class="v" id="uiDps">10</div></div>
   <div class="stat" id="zoneinfo"><div class="k">当前区域</div><div class="v" id="uiZone">腐朽墓穴 · 第1区</div></div>
-  <div class="stat"><div class="k">转生次数</div><div class="v" id="uiPrestige">0 (全局 ×1)</div></div>
+  <div class="stat"><div class="k">转生次数</div><div class="v" id="uiPrestige">0</div></div>
+  <div class="stat" style="cursor:pointer; display:flex; align-items:center" id="hallBtn"><div class="v" style="font-size:14px">🏛 成就墙 / 时间线收藏馆</div></div>
+</div>
+<div id="hallModal" class="hidden">
+  <div id="hallInner">
+    <h2>成 就 墙 · 时 间 线 收 藏 馆</h2>
+    <div style="font-size:11px;color:var(--parchment-dim)">每枚成就：黑魂工资 +1 点 + 永久全局 ×1.05。魔王说这叫员工激励，虽然他没发过工资。</div>
+    <div id="achSummary" style="font-size:12px;color:var(--gold);margin-top:6px"></div>
+    <h3>🏆 成 就 墙</h3>
+    <div id="achGrid"></div>
+    <h3>🕰 时 间 线 收 藏 馆（被你掀掉的时间线）</h3>
+    <div id="tlList"></div>
+    <div style="text-align:center;margin-top:10px"><button id="hallClose">关闭并继续摸鱼</button></div>
+  </div>
 </div>
 
 <canvas id="scene" width="900" height="300"></canvas>
@@ -85,9 +111,22 @@
     </div>
   </div>
   <div class="box flex1">
-    <div class="boxtitle">装 备 词 缀（Boss 掉落，自动装备）</div>
-    <div id="affixList"><span style="font-size:11px;color:var(--parchment-dim)">空空如也。去打第一个 Boss（第10区）。</span></div>
+    <div class="boxtitle">深 渊 装 备 栏（GS 对比 · 废件自动分解 · 强化绑槽不绑装备）</div>
+    <div id="gearList"><span style="font-size:11px;color:var(--parchment-dim)">空空如也。去打第一个 Boss（第10区）。</span></div>
   </div>
+</div>
+<div id="panel3" style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+  <div class="box flex1">
+    <div class="boxtitle">铁 匠 铺（失败不降级 · 连败2次必成 · 10%暴击+2级）</div>
+    <div style="font-size:11px;color:var(--parchment-dim)">碎屑：<span id="uiScrap" style="color:var(--gold)">0</span>（分解废件所得 · 粉尘=9碎屑 · 精华=81碎屑）</div>
+    <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
+      <button id="enhWeapon">⚔武器 Lv.<span id="enhWeaponLv">0</span>/15 (<span id="enhWeaponCost">?</span>屑+<span id="enhWeaponGold">?</span>)</button>
+      <button id="enhArmor">🛡防具 Lv.<span id="enhArmorLv">0</span>/15 (<span id="enhArmorCost">?</span>屑+<span id="enhArmorGold">?</span>)</button>
+      <button id="enhTrinket">💍饰品 Lv.<span id="enhTrinketLv">0</span>/15 (<span id="enhTrinketCost">?</span>屑+<span id="enhTrinketGold">?</span>)</button>
+    </div>
+    <div id="bsMsg" style="font-size:11px;color:var(--parchment);margin-top:6px;min-height:16px">铁匠：想强化就说话，别拿眼睛锯我。</div>
+  </div>
+</div>
   <div class="box flex1">
     <div class="boxtitle">深 渊 摸 鱼 实 录（挂机日志）</div>
     <div id="log"></div>
@@ -144,9 +183,9 @@
     baseCost: 10, costGrowth: 1.14,
     atkSpeed: 1, critChance: 0.05, critMult: 2,
     // 怪物
-    baseHP: 12, hpGrowth: 1.65,
+    baseHP: 12, hpGrowth: 1.75,   // 1.75: 装备系统上线后补偿免费成长源 r_gear≈0.044/区（原1.65墙被穿）
     baseGold: 12, goldGrowth: 1.55,
-    bossEvery: 10, bossHpMult: 6, bossHpCycle: 1.6,
+    bossEvery: 10, bossHpMult: 6, bossHpCycle: 1.75,   // 1.75: 同上补偿
     bossGoldMult: 24, bossGoldCycle: 1.5,
     // 被动收入：默认关闭(passiveRate=0)。
     // 仿真实证：任何稳态被动收入都会填补Boss战收入真空，导致墙点机制彻底失效(墙=收入真空+圈次跳变)。
@@ -258,6 +297,17 @@
     for (const k in m) m[k] *= global;
     m.allDmg *= prestigeMult;
     if (extra && extra.spdLv) m.atkSpeed *= Math.pow(CONFIG.spdGain, Math.min(extra.spdLv, CONFIG.spdMax));
+    // 装备系统：always/conditional 由 computeMults 消费，proc 由应用层战斗结算消费
+    if (extra && extra.gearEffects) {
+      for (const e of extra.gearEffects) {
+        if (e.type === 'always') m[e.zone] *= e.mult;
+        else if (e.type === 'conditional') {
+          const c = e.condition || {};
+          if (c.bossNameMinLength && (!boss || boss.length < c.bossNameMinLength)) continue;
+          m[e.zone] *= e.mult;
+        }
+      }
+    }
     return m;
   }
 
@@ -342,13 +392,205 @@
   else root.ECON = api;
 })(typeof window !== 'undefined' ? window : globalThis);
 
+/* 深渊摸鱼录 - 装备系统算法类 (GEAR)
+ * 纯逻辑层：无 DOM 依赖。对齐 步骤1-装备与槽位强化体系设计.md + config/装备系统配置.json
+ * 核心职责：装备掉落(rollItem) / 装备评分(computeGS) / 自动分解(salvageValue) / 槽位强化(enhanceRoll)
+ * 墙力安全：词条数值锚定 ilvl，槽位强化封顶 ×2.5，无无界指数源。
+ */
+(function (root) {
+  'use strict';
+
+  function createGearSystem(cfg, econ) {
+    const C = cfg;
+    const Q = {}; C.quality.forEach(q => Q[q.id] = q);
+    const QLIST = C.quality.map(q => q.id);
+    const SP = {}; C.specialAffixes.forEach(a => SP[a.id] = a);
+    const BASIC = C.basicAffixes;
+
+    // ---------- 品质与掉落 ----------
+    function rollQuality(isBoss, rng) {
+      const r = (rng || Math.random)() * 100;
+      let acc = 0;
+      for (const q of C.quality) {
+        acc += isBoss ? q.bossWeight : q.dropWeight;
+        if (r < acc) return q.id;
+      }
+      return 'white';
+    }
+    function rollSlot(rng) {
+      const keys = Object.keys(C.slots);
+      return keys[Math.floor((rng || Math.random)() * keys.length)];
+    }
+    function pickBasicAffix(slot, exclude, rng) {
+      const keys = Object.keys(BASIC);
+      let total = 0;
+      const w = {};
+      for (const k of keys) {
+        if (exclude.includes(k)) continue;
+        w[k] = BASIC[k].slotWeights[slot] || 1;
+        total += w[k];
+      }
+      if (total <= 0) return 'atk';
+      let r = (rng || Math.random)() * total;
+      for (const k of keys) { if (exclude.includes(k)) continue; r -= w[k]; if (r <= 0) return k; }
+      return keys[0];
+    }
+    function pickSpecialAffix(slot, qualityId, exclude, rng) {
+      const qi = QLIST.indexOf(qualityId);
+      const pool = C.specialAffixes.filter(a => {
+        if (exclude.includes(a.id)) return false;
+        const minQi = QLIST.indexOf(a.minQuality);
+        if (qi < minQi) return false;
+        return (a.slotWeights[slot] || 0) > 0;
+      });
+      if (pool.length === 0) return null;
+      let total = 0;
+      for (const a of pool) total += a.slotWeights[slot];
+      let r = (rng || Math.random)() * total;
+      for (const a of pool) { r -= a.slotWeights[slot]; if (r <= 0) return a.id; }
+      return pool[0].id;
+    }
+
+    // ---------- 装备生成 ----------
+    function genName(qualityId, slot, rng) {
+      const A = C.nameGen.adj[qualityId], N = C.nameGen.noun[slot], S = C.nameGen.suffix;
+      const pick = arr => arr[Math.floor((rng || Math.random)() * arr.length)];
+      let name = pick(A) + pick(N);
+      if ((rng || Math.random)() < 0.5) name += pick(S);
+      return name;
+    }
+
+    // rollItem: 掉落一件装备
+    // ilvl: 掉落区域数; isBoss: Boss掉落(品质更优 & ilvl+5)
+    function rollItem(ilvl, isBoss, rng) {
+      rng = rng || Math.random;
+      const qid = rollQuality(isBoss, rng);
+      const q = Q[qid];
+      const slot = rollSlot(rng);
+      const finalIlvl = ilvl + (isBoss ? 5 : 0);
+      const [cMin, cMax] = q.coeff;
+      const c = cMin + rng() * (cMax - cMin);
+      const P = c * (1 + finalIlvl / 10);          // 主词条倍率
+      const [nMin, nMax] = q.affixCount;
+      const nAffix = nMin + Math.floor(rng() * (nMax - nMin + 1));
+
+      const usedBasic = [], usedSpecial = [];
+      const affixes = [];
+      // 主词条（基础池，槽位权重）
+      const pKey = pickBasicAffix(slot, usedBasic, rng);
+      usedBasic.push(pKey);
+      affixes.push({ key: pKey, kind: 'basic', mult: P, effects: [{ type: 'always', zone: BASIC[pKey].zone, mult: P }] });
+      // 副词条
+      const specialQuota = { white: 0, blue: 0, yellow: 0, ancient: 1, primal: 1, chaos: 2 }[qid];
+      let specials = 0;
+      for (let i = 1; i < nAffix; i++) {
+        if (specials < specialQuota && rng() < 0.85) {
+          const spId = pickSpecialAffix(slot, qid, usedSpecial, rng);
+          if (spId) {
+            usedSpecial.push(spId);
+            const sp = SP[spId];
+            specials++;
+            affixes.push({ key: spId, kind: 'special', mult: sp.mult, text: sp.text, effects: sp.effects, name: sp.name });
+            continue;
+          }
+        }
+        const key = pickBasicAffix(slot, usedBasic, rng);
+        usedBasic.push(key);
+        const subMult = Math.pow(P, 0.6);
+        affixes.push({ key, kind: 'basic', mult: subMult, effects: [{ type: 'always', zone: BASIC[key].zone, mult: subMult }] });
+      }
+      // 暗金以下若配额未用不补；混沌必带2特效已在循环保证（nAffix=6, quota=2, 85%倾向）
+      const item = {
+        id: 'it_' + Date.now().toString(36) + Math.floor(rng() * 1e6).toString(36),
+        slot, quality: qid, ilvl: finalIlvl,
+        name: genName(qid, slot, rng),
+        affixes,
+        power: P,
+        cosmetic: affixes.some(a => SP[a.key] && SP[a.key].cosmetic) ? 'leek' : null,
+      };
+      item.gs = computeGS(item);
+      return item;
+    }
+
+    // ---------- 装备评分 ----------
+    // GS = ⌊ ilvl × Q × (1 + Σ log10(词条倍率)×100) ⌋ —— 对数压乘法爆炸，永不溢出
+    function computeGS(item) {
+      const q = Q[item.quality];
+      let sum = 0;
+      for (const a of item.affixes) sum += Math.log10(Math.max(1, a.mult)) * 100;
+      return Math.floor(item.ilvl * q.q * (1 + sum));
+    }
+
+    // ---------- 自动分解 ----------
+    function salvageValue(item) { return C.salvage.byQuality[item.quality]; }
+    // 掉落处置：GS 对比同槽已装备 → 分解 or 提示换装
+    function dropDisposition(item, equippedGS) {
+      if (item.gs <= equippedGS) return { action: 'salvage', scrap: salvageValue(item) };
+      return { action: 'equip_offer', scrap: 0 };
+    }
+
+    // ---------- 槽位强化 ----------
+    function slotMult(lv) { return 1 + C.enhance.slotMultPerLevel * Math.min(lv, C.enhance.maxLevel); }
+    function scrapCost(lv) { return 9 * Math.ceil(3 * Math.pow(1.9, lv)); }
+    // 强化金币成本锚定非Boss公式(passiveGold)：Boss区金币×24~273巨额乘区，
+    // 若撞上Boss区会导致成本脉冲式暴涨（实测区70成本从163T暴涨到44AA）
+    function goldCost(lv, passiveGoldFn) { return passiveGoldFn(10 + lv * 6); }
+    // enhanceRoll: 强化判定（85%成功/连败2次保底/10%暴击+2级/失败不降级）
+    function enhanceRoll(lv, pity, rng) {
+      rng = rng || Math.random;
+      if (lv >= C.enhance.maxLevel) return { success: false, crit: false, newLv: lv, pity: 0, full: true };
+      let success = rng() < C.enhance.successRate;
+      if (pity >= C.enhance.pityAfterFails) success = true;   // 保底
+      let crit = false;
+      let newLv = lv, newPity = pity;
+      if (success) {
+        crit = rng() < C.enhance.critChance;
+        newLv = Math.min(C.enhance.maxLevel, lv + (crit ? 2 : 1));
+        newPity = 0;
+      } else {
+        newPity = pity + 1;  // 失败不降级，只费材料
+      }
+      return { success, crit, newLv, pity: newPity };
+    }
+
+    // ---------- 词条效果归一化（供 computeMults / 应用层直接消费） ----------
+    // equipped: {weapon: item|null, armor: item|null, trinket: item|null}
+    // enhLv: {weapon: lv, armor: lv, trinket: lv}
+    // 返回 effects 数组：基础词条乘 slotMult，特效词条原样
+    function itemEffects(equipped, enhLv) {
+      const out = [];
+      for (const slotKey of Object.keys(C.slots)) {
+        const item = equipped[slotKey];
+        if (!item) continue;
+        const sm = slotMult((enhLv || {})[slotKey] || 0);
+        for (const a of item.affixes) {
+          if (a.kind === 'basic') {
+            for (const e of a.effects) out.push({ type: 'always', zone: e.zone, mult: e.mult * sm });
+          } else {
+            for (const e of a.effects) out.push(e);
+          }
+        }
+      }
+      return out;
+    }
+
+    return { rollItem, computeGS, salvageValue, dropDisposition, slotMult, scrapCost, goldCost, enhanceRoll, itemEffects, rollQuality, QUALITY: Q, SPECIALS: SP };
+  }
+
+  const api = { createGearSystem };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.GEAR = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
 </script>
 <script type="application/json" id="affix-data">{"meta": {"table": "equipment_affixes", "version": "0.2", "game": "深渊摸鱼录", "aligned_doc": "步骤1-Web技术架构与核心数值模型.md", "notes": "所有 mult 一律乘算(设计红线)；zone 枚举必须与 ECON 模型的乘区名一致；数值单位为倍率而非加值"}, "zones": {"atk": "攻击力乘区", "atkSpeed": "攻速乘区", "critChance": "暴击率乘区(基于基础5%)", "critMult": "暴伤乘区(基于基础x2)", "allDmg": "全局伤害乘区", "goldGain": "金币收益乘区", "offlineGain": "离线收益乘区", "bossDmg": "对Boss伤害乘区", "eventRate": "抽象事件触发率乘区", "moodGain": "情绪值获取乘区"}, "quality": [{"id": "white", "name": "普通", "color": "#c8c8c8", "dropWeight": 55.0, "affixCount": [1, 1], "note": "过渡用，几乎无乘区"}, {"id": "blue", "name": "魔法", "color": "#6c9cff", "dropWeight": 27.0, "affixCount": [1, 2], "note": "单一小乘区起步"}, {"id": "yellow", "name": "稀有", "color": "#ffff6c", "dropWeight": 12.0, "affixCount": [2, 3], "note": "多乘区+可带proc"}, {"id": "ancient", "name": "暗金", "color": "#c87533", "dropWeight": 5.49, "affixCount": [4, 6], "note": "核心追求，期望全件乘积约x10^4"}, {"id": "primal", "name": "太古", "color": "#ff3c3c", "dropWeight": 0.5, "affixCount": [6, 6], "note": "全服广播级掉落，必有1条机制型词缀"}, {"id": "glitch", "name": "质检员的错别字", "color": "#3cff9e", "dropWeight": 0.01, "affixCount": [1, 1], "note": "隐藏彩蛋：每日随机重roll一条词缀，论坛话题制造机"}], "affixes": [{"id": "aff_wood_stick", "quality": "white", "text": "木棒。真的就只是木棒。", "effects": [{"type": "always", "zone": "atk", "mult": 1.1}]}, {"id": "aff_honest_broom", "quality": "white", "text": "扫帚。深渊清洁工的失业证明。", "effects": [{"type": "always", "zone": "goldGain", "mult": 1.15}]}, {"id": "aff_leek_50000", "quality": "blue", "text": "攻击力 +50000%，但武器外观变成一根大葱", "cosmetic": "leek", "effects": [{"type": "always", "zone": "atk", "mult": 500}]}, {"id": "aff_rush_hour", "quality": "blue", "text": "早八之力。挤过地铁的手速不会说谎。", "effects": [{"type": "always", "zone": "atkSpeed", "mult": 1.5}]}, {"id": "aff_salty_reviewer", "quality": "yellow", "text": "每次攻击有 5% 概率让 Boss 陷入对人生的深度怀疑（眩晕 3 秒）", "effects": [{"type": "always", "zone": "critChance", "mult": 1.2}, {"type": "proc", "chance": 0.05, "effect": {"kind": "stun", "durationSec": 3, "log": "Boss头顶冒出气泡：我这么多年的KPI到底为了什么……"}}]}, {"id": "aff_overtime_curse", "quality": "yellow", "text": "把加班怨气注入武器。数值策划看了会沉默。", "effects": [{"type": "always", "zone": "allDmg", "mult": 12}, {"type": "always", "zone": "moodGain", "mult": 0.8}]}, {"id": "aff_goblin_loan", "quality": "yellow", "text": "附带哥布林的欠条。击杀敌人时替它收账。", "effects": [{"type": "always", "zone": "goldGain", "mult": 8}]}, {"id": "aff_reply_all", "quality": "ancient", "text": "击杀敌人后，向深渊群里发「收到」，全体攻击 ×300，持续 10 秒", "effects": [{"type": "always", "zone": "allDmg", "mult": 20}, {"type": "proc", "chance": 1.0, "effect": {"kind": "buff", "zone": "atk", "mult": 300, "durationSec": 10, "log": "深渊群弹出99+条消息：收到 收到 收到 收到"}}]}, {"id": "aff_long_name_slayer", "quality": "ancient", "text": "对名字超过 8 个字的 Boss 伤害 ×9999（专治史诗感）", "effects": [{"type": "conditional", "condition": {"bossNameMinLength": 8}, "zone": "bossDmg", "mult": 9999}]}, {"id": "aff_demon_kpi", "quality": "ancient", "text": "恶魔替你打工。它不情愿，但合同已签。", "effects": [{"type": "always", "zone": "offlineGain", "mult": 15}, {"type": "always", "zone": "eventRate", "mult": 1.5}]}, {"id": "aff_existential_crit", "quality": "ancient", "text": "暴击时敌人会思考存在主义问题，受到的伤害翻倍再翻倍", "effects": [{"type": "always", "zone": "critMult", "mult": 4}, {"type": "always", "zone": "critChance", "mult": 1.8}]}, {"id": "aff_gossip_network", "quality": "ancient", "text": "与深渊保洁阿姨结盟。全地图情报网，事件源源不断。", "effects": [{"type": "always", "zone": "eventRate", "mult": 10}]}, {"id": "aff_payroll_skull", "quality": "ancient", "text": "骷髅兵 033 号的工资条。发工资的瞬间全体狂暴。", "effects": [{"type": "always", "zone": "atk", "mult": 50}, {"type": "proc", "chance": 0.1, "effect": {"kind": "buff", "zone": "atkSpeed", "mult": 5, "durationSec": 8, "log": "骷髅兵033：工资到账！干碎他们！"}}]}, {"id": "aff_angel_review", "quality": "ancient", "text": "天使客服亲笔好评。被夸过的敌人会害羞地降低防御。", "effects": [{"type": "always", "zone": "bossDmg", "mult": 100}, {"type": "always", "zone": "moodGain", "mult": 2}]}, {"id": "aff_report_generator", "quality": "primal", "text": "本武器每小时自动撰写一篇《深渊职场生存报告》，阅读者（敌人）直接下岗", "effects": [{"type": "always", "zone": "allDmg", "mult": 500}, {"type": "proc", "chance": 1.0, "effect": {"kind": "execute", "threshold": 0.3, "log": "报告已群发。血量低于30%的怪物集体下岗。"}}]}, {"id": "aff_table_flip", "quality": "primal", "text": "掀桌之力。每 60 秒自动小型掀桌一次，当前所有乘区临时 ×10", "effects": [{"type": "always", "zone": "allDmg", "mult": 100}, {"type": "proc", "chance": 1.0, "periodSec": 60, "effect": {"kind": "globalMult", "mult": 10, "durationSec": 5, "log": "（桌子碎裂声）魔王：又掀？！这已经是本周第三次了！"}}]}, {"id": "aff_mood_reactor", "quality": "primal", "text": "情绪永动机。心情值转化为伤害，转化率违反能量守恒", "effects": [{"type": "always", "zone": "atk", "mult": 1000}, {"type": "always", "zone": "moodGain", "mult": 20}]}, {"id": "aff_glitch_blank", "quality": "glitch", "text": "属性：策划忘填了。效果：也忘了。但它是彩色的。", "dailyReroll": true, "effects": [{"type": "always", "zone": "allDmg", "mult": 1}]}], "dailyRerollPool": [{"text": "每日随机词缀①：今天心情不错，全局 ×50", "effects": [{"type": "always", "zone": "allDmg", "mult": 50}]}, {"text": "每日随机词缀②：骷髅兵集体请了病假，离线收益 ×100 但攻速 ×0.5", "effects": [{"type": "always", "zone": "offlineGain", "mult": 100}, {"type": "always", "zone": "atkSpeed", "mult": 0.5}]}, {"text": "每日随机词缀③：魔王今天不在，Boss 金币 ×500", "effects": [{"type": "always", "zone": "goldGain", "mult": 500}]}]}</script>
-<script type="application/json" id="event-data">{"meta": {"table": "idle_events", "version": "0.2", "game": "深渊摸鱼录", "aligned_doc": "步骤1-Web技术架构与核心数值模型.md", "notes": "离线/在线挂机随机事件池。收益分布按策划案：t1(1~10x)权重60 / t2(10~100x)权重30 / t3(100~500x)权重9 / t4(500~1000x)权重1。发疯线Prestige提升t3/t4权重"}, "tiers": [{"id": "t1", "range": [1, 10], "weight": 60, "label": "日常抽象"}, {"id": "t2", "range": [10, 100], "weight": 30, "label": "深度发疯"}, {"id": "t3", "range": [100, 500], "weight": 9, "label": "史诗抽象"}, {"id": "t4", "range": [500, 1000], "weight": 1, "label": "精神状态极不美丽(传说)"}], "events": [{"id": "evt_card_night", "tier": "t1", "lines": ["[02:14] 你的骷髅兵在地下城和哥布林打了一夜牌，赢回 {gold} 金币。", "（哥布林已签署还款协议，分60期，利息另算。）"], "reward": {"kind": "goldMult", "mult": 5}}, {"id": "evt_altar_snack", "tier": "t2", "lines": ["[03:40] 路过深渊祭坛，顺手把魔王的贡品偷吃了。全属性暴涨 {mult}。", "魔王表示根本不记得贡品里有什么。"], "reward": {"kind": "buff", "zone": "allDmg", "mult": 50, "durationSec": 600}}, {"id": "evt_bad_review_resign", "tier": "t2", "lines": ["[04:05] 键盘诗人给深渊领主写了篇800字小作文。领主看完当场辞职，", "掉落装备 ×3，并留下遗言：你们这个团队太卷了。"], "reward": {"kind": "goldMult", "mult": 80}}, {"id": "evt_demon_team_building", "tier": "t2", "lines": ["[05:22] 恶魔团建，全员喝多。趁乱搜刮宝箱 ×7，顺手把团建横幅", "「本季度血祭KPI完成率120%」撕下来做了件披风。"], "reward": {"kind": "buff", "zone": "goldGain", "mult": 100, "durationSec": 900}}, {"id": "evt_angel_service_call", "tier": "t2", "lines": ["[06:00] 天使客服来电：亲亲，您的堕落申请已通过审核哦～", "获得【堕落者积分】，可兑换免下坠套餐（已自动兑换）。"], "reward": {"kind": "buff", "zone": "offlineGain", "mult": 50, "durationSec": 1800}}, {"id": "evt_raise_denied", "tier": "t1", "lines": ["[07:31] 骷髅兵工号033申请调薪被拒，愤怒转化为攻击力 ×{mult}。", "HR恶魔在本子上记了一笔：该员工情绪不稳定，建议重用。"], "reward": {"kind": "buff", "zone": "atk", "mult": 30, "durationSec": 300}}, {"id": "evt_insomnia_totem", "tier": "t1", "lines": ["[08:45] 系统检测到你一夜没睡，赠送圣物【黑眼圈图腾】。", "图腾铭文：疲惫就是力量。"], "reward": {"kind": "buff", "zone": "atkSpeed", "mult": 10, "durationSec": 600}}, {"id": "evt_queue_jump", "tier": "t1", "lines": ["[01:07] 一只史莱姆试图插队进本层刷怪队列，被全员用眼神物理超度。", "战利品按遗产法分配完毕。"], "reward": {"kind": "goldMult", "mult": 3}}, {"id": "evt_boss_ppt", "tier": "t3", "lines": ["[11:11] 万魔殿会议室泄压，魔王废弃的季度汇报PPT飘落战场。", "页页都是「赋能」「闭环」「抓手」。敌人看不懂，但大受震撼，全体眩晕并掉落 {gold} 金币。"], "reward": {"kind": "goldMult", "mult": 300}}, {"id": "evt_god_watching_drama", "tier": "t3", "lines": ["[13:37] 你摸进了神座摸鱼间。神明正在追剧，没空理你。", "顺手拿走了供桌上的神格零食，全属性 ×{mult}。神：算了懒得追责。"], "reward": {"kind": "buff", "zone": "allDmg", "mult": 400, "durationSec": 1200}}, {"id": "evt_bard_emoji", "tier": "t1", "lines": ["[03:03] 键盘诗人往敌方频道发了个「微笑」表情。", "敌人集体破防，开始互相写小作文。"], "reward": {"kind": "buff", "zone": "critChance", "mult": 20, "durationSec": 120}}, {"id": "evt_mine_shift_swap", "tier": "t1", "lines": ["[22:00] 深渊矿场夜班交班。白班小鬼偷懒时间被折算成了 {gold} 金币绩效。", "打卡机对此表示欣慰。"], "reward": {"kind": "goldMult", "mult": 6}}, {"id": "evt_necro_contract_renew", "tier": "t3", "lines": ["[00:00] 资本家死灵法师与恶魔工会完成年度续约：薪资不变，工时翻倍。", "恶魔们含泪挖出了 {gold} 金币的矿产资源。"], "reward": {"kind": "goldMult", "mult": 150}}, {"id": "evt_goblin_wedding", "tier": "t2", "lines": ["[18:88] 被你打爆过的哥布林家族办喜事，给你发了请帖。", "随了2金币份子钱，回礼是一整箱战利品。礼尚往来，深渊传统。"], "reward": {"kind": "goldMult", "mult": 60}}, {"id": "evt_table_flip_rehearsal", "tier": "t4", "lines": ["[99:99] 你对着空气练习掀桌子，结果把本时间线的桌子真掀了。", "魔王赔了一笔精神损失费，当前全属性 ×{mult}，持续到下次转生。"], "reward": {"kind": "buff", "zone": "allDmg", "mult": 1000, "durationSec": 999999, "log": "本局所有乘区 ×1000（转生前有效）"}}, {"id": "evt_dev_nerf_letter", "tier": "t4", "lines": ["[04:44] 策划的平衡性补丁在路上丢了，被深渊邮差捡到并塞进了你的宝箱。", "里面是一张手写纸条：本次加强 ×{mult}，别声张。"], "reward": {"kind": "buff", "zone": "allDmg", "mult": 800, "durationSec": 3600}}, {"id": "evt_skeleton_union", "tier": "t3", "lines": ["[16:16] 骷髅兵工会集体谈判成功：每周三下午带薪发呆。", "发呆期间灵界能量意外充沛，离线收益模型 ×{mult} 修正。"], "reward": {"kind": "buff", "zone": "offlineGain", "mult": 250, "durationSec": 7200}}, {"id": "evt_leek_blessing", "tier": "t2", "lines": ["[05:55] 深渊农田丰收。大葱之神(自封的)赐福：攻击 ×{mult}，", "代价是接下来1小时所有暴击数字都变成绿色葱花。"], "reward": {"kind": "buff", "zone": "atk", "mult": 40, "durationSec": 3600}}]}</script>
+<script type="application/json" id="gear-data">{"meta": {"table": "gear_system", "version": "1.0", "game": "深渊摸鱼录", "aligned_doc": "步骤1-装备与槽位强化体系设计.md", "notes": "装备系统配置：6品质/词条池/槽位/强化/分解。词条数值公式 = 基础值 × 品质随机系数c × (1+ilvl/10)，主词条=P，副词条=P^0.6；特效词条倍率固定。sp_summon_dev 的 trueDmg 效果类型为步骤3新增（应用层需实现）"}, "quality": [{"id": "white", "name": "破烂白装", "color": "#c8c8c8", "dropWeight": 45, "bossWeight": 30, "affixCount": [1, 1], "q": 1, "coeff": [1, 1.2]}, {"id": "blue", "name": "凑合蓝装", "color": "#6c9cff", "dropWeight": 30, "bossWeight": 32, "affixCount": [2, 2], "q": 1.5, "coeff": [1.5, 2.5]}, {"id": "yellow", "name": "黄金稀世", "color": "#ffd700", "dropWeight": 16, "bossWeight": 20, "affixCount": [3, 3], "q": 2, "coeff": [3, 6]}, {"id": "ancient", "name": "暗金传说", "color": "#bf642f", "dropWeight": 7, "bossWeight": 12, "affixCount": [4, 4], "q": 3, "coeff": [8, 20]}, {"id": "primal", "name": "远古太古", "color": "#ff3c3c", "dropWeight": 1.9, "bossWeight": 5.9, "affixCount": [5, 5], "q": 4, "coeff": [25, 60]}, {"id": "chaos", "name": "混沌乐子人神装", "color": "#3cff9e", "dropWeight": 0.1, "bossWeight": 0.1, "affixCount": [6, 6], "q": 6, "coeff": [80, 250]}], "slots": {"weapon": {"name": "武器槽", "mult": "×(1+0.1lv) 封顶15级"}, "armor": {"name": "防具槽", "mult": "×(1+0.1lv) 封顶15级"}, "trinket": {"name": "饰品槽", "mult": "×(1+0.1lv) 封顶15级"}}, "basicAffixes": {"atk": {"base": 1.3, "text": "攻击强化", "zone": "atk", "slotWeights": {"weapon": 5, "armor": 1, "trinket": 1}}, "atkSpeed": {"base": 1.15, "text": "攻速强化", "zone": "atkSpeed", "slotWeights": {"weapon": 1, "armor": 1, "trinket": 3}}, "critChance": {"base": 1.1, "text": "暴击率", "zone": "critChance", "slotWeights": {"weapon": 1, "armor": 1, "trinket": 3}}, "critMult": {"base": 1.2, "text": "暴伤", "zone": "critMult", "slotWeights": {"weapon": 2, "armor": 1, "trinket": 2}}, "goldGain": {"base": 1.3, "text": "金币贪婪", "zone": "goldGain", "slotWeights": {"weapon": 1, "armor": 4, "trinket": 1}}, "offlineGain": {"base": 1.5, "text": "深渊吸金", "zone": "offlineGain", "slotWeights": {"weapon": 1, "armor": 4, "trinket": 1}}, "bossDmg": {"base": 1.4, "text": "Boss专精", "zone": "bossDmg", "slotWeights": {"weapon": 2, "armor": 1, "trinket": 1}}}, "specialAffixes": [{"id": "sp_summon_dev", "name": "召唤策划挨打", "minQuality": "ancient", "text": "每次攻击 5% 概率召唤策划出来挨打，受到 5000% 攻击力的真实伤害", "mult": 50, "effects": [{"type": "proc", "chance": 0.05, "effect": {"kind": "trueDmg", "mult": 50, "log": "策划被召唤出来挨打：啊——这也在平衡范围内！"}}], "slotWeights": {"weapon": 4, "armor": 1, "trinket": 1}}, {"id": "sp_long_name", "name": "长名猎手", "minQuality": "ancient", "text": "对名字超过 8 字的 Boss 伤害 ×9999（专治史诗感）", "mult": 9999, "effects": [{"type": "conditional", "condition": {"bossNameMinLength": 8}, "zone": "bossDmg", "mult": 9999}], "slotWeights": {"weapon": 3, "armor": 1, "trinket": 2}}, {"id": "sp_leek", "name": "大葱显圣", "minQuality": "blue", "text": "攻击 ×500，武器外观变成一根带须大葱", "mult": 500, "cosmetic": "leek", "effects": [{"type": "always", "zone": "atk", "mult": 500}], "slotWeights": {"weapon": 5, "armor": 1, "trinket": 1}}, {"id": "sp_reply_all", "name": "群聊收到体", "minQuality": "yellow", "text": "每次击杀向深渊群发「收到」，全乘区 ×300 持续 10 秒", "mult": 300, "effects": [{"type": "proc", "chance": 1.0, "effect": {"kind": "buff", "zone": "atk", "mult": 300, "durationSec": 10, "log": "深渊群弹出99+条消息：收到 收到 收到"}}], "slotWeights": {"weapon": 2, "armor": 1, "trinket": 3}}, {"id": "sp_existential", "name": "人生怀疑波", "minQuality": "yellow", "text": "每次攻击 5% 概率让 Boss 陷入对人生的深度怀疑（眩晕 3 秒）", "mult": 10, "effects": [{"type": "proc", "chance": 0.05, "effect": {"kind": "stun", "durationSec": 3, "log": "Boss头顶冒出气泡：我这么多年的KPI到底为了什么……"}}], "slotWeights": {"weapon": 2, "armor": 1, "trinket": 3}}, {"id": "sp_execute", "name": "下岗执行令", "minQuality": "primal", "text": "每次攻击，血量低于30%的敌人直接下岗", "mult": 20, "effects": [{"type": "proc", "chance": 1.0, "effect": {"kind": "execute", "threshold": 0.3, "log": "《深渊职场生存报告》已群发"}}], "slotWeights": {"weapon": 3, "armor": 1, "trinket": 2}}, {"id": "sp_mini_flip", "name": "小型掀桌", "minQuality": "ancient", "text": "每 60 秒自动小型掀桌，全乘区 ×10 持续 5 秒", "mult": 10, "effects": [{"type": "proc", "chance": 1.0, "periodSec": 60, "effect": {"kind": "globalMult", "mult": 10, "durationSec": 5, "log": "（桌子碎裂声）魔王：又掀？！"}}], "slotWeights": {"weapon": 2, "armor": 2, "trinket": 2}}, {"id": "sp_goblin_debt", "name": "哥布林讨债", "minQuality": "blue", "text": "附带哥布林的欠条，金币获取 ×8", "mult": 8, "effects": [{"type": "always", "zone": "goldGain", "mult": 8}], "slotWeights": {"weapon": 1, "armor": 4, "trinket": 2}}, {"id": "sp_mood_reactor", "name": "情绪永动机", "minQuality": "chaos", "text": "攻击 ×1000，转化率违反能量守恒", "mult": 1000, "effects": [{"type": "always", "zone": "atk", "mult": 1000}], "slotWeights": {"weapon": 5, "armor": 1, "trinket": 1}}, {"id": "sp_glitch", "name": "质检员的错别字", "minQuality": "chaos", "text": "属性：策划忘填了。效果：也忘了。但它是彩色的。（每日随机重摇）", "mult": 5, "dailyReroll": true, "effects": [{"type": "always", "zone": "allDmg", "mult": 5}], "slotWeights": {"weapon": 1, "armor": 1, "trinket": 1}}], "enhance": {"maxLevel": 15, "slotMultPerLevel": 0.1, "successRate": 0.85, "pityAfterFails": 2, "critChance": 0.1, "scrapCost": "9 * ceil(3 * 1.9^lv) 碎屑", "goldCost": "zoneGold(10 + lv * 6)", "formulaDoc": "槽位属性倍率 = ×(1 + 0.10 × 强化等级)，满级15级 = ×2.5"}, "salvage": {"unit": "碎屑（粉尘=9碎屑，精华=81碎屑）", "byQuality": {"white": 1, "blue": 3, "yellow": 9, "ancient": 81, "primal": 405, "chaos": 1620}}, "nameGen": {"adj": {"white": ["破烂的", "锈迹斑斑的", "谁扔这的", "打折区捞的"], "blue": ["凑合的", "某亡灵的", "二手九成新", "清仓尾货"], "yellow": ["稀世的", "镀金的", "传说（自封）", "鉴定为真（大概）"], "ancient": ["深渊认证", "魔工坊出品", "魔王同款", "地狱精工"], "primal": ["远古", "禁忌", "开天", "太古遗物"], "chaos": ["混沌", "???", "乱码的", "崩坏的"]}, "noun": {"weapon": ["木棒", "大葱", "锈剑", "键盘", "肝（自己的）"], "armor": ["围裙", "横幅披风", "病号服", "西服（皱的）"], "trinket": ["工牌", "哥布林欠条", "黑眼圈", "打卡机", "戒指（辞职群）"]}, "suffix": ["·超度特化", "·摸鱼认证", "·KPI之怒", "·带薪", "·深渊限定", "·过期不候"]}}</script>
+<script type="application/json" id="event-data">{"meta": {"table": "idle_events", "version": "0.2", "game": "深渊摸鱼录", "aligned_doc": "步骤1-Web技术架构与核心数值模型.md", "notes": "离线/在线挂机随机事件池。收益分布按策划案：t1(1~10x)权重60 / t2(10~100x)权重30 / t3(100~500x)权重9 / t4(500~1000x)权重1。发疯线Prestige提升t3/t4权重；v4: 8个事件增加 choices 选项分支（goldMult/buff/gamble/goldLoss 四种效果类型），在线弹窗二选一，15秒未选自动执行第一项；离线结算仍用原 reward 安全档"}, "tiers": [{"id": "t1", "range": [1, 10], "weight": 60, "label": "日常抽象"}, {"id": "t2", "range": [10, 100], "weight": 30, "label": "深度发疯"}, {"id": "t3", "range": [100, 500], "weight": 9, "label": "史诗抽象"}, {"id": "t4", "range": [500, 1000], "weight": 1, "label": "精神状态极不美丽(传说)"}], "events": [{"id": "evt_card_night", "tier": "t1", "lines": ["[02:14] 你的骷髅兵在地下城和哥布林打了一夜牌，赢回 {gold} 金币。", "（哥布林已签署还款协议，分60期，利息另算。）"], "reward": {"kind": "goldMult", "mult": 5}, "choices": [{"text": "梭哈！把整晚战利品押上桌", "kind": "gamble", "chance": 0.5, "win": {"kind": "goldMult", "mult": 40, "log": "河牌开出同花！哥布林当场昏厥，你扫走全场"}, "lose": {"kind": "goldLoss", "rate": 0.5, "log": "哥布林亮出三条A。它打牌居然是算命的。"}}, {"text": "见好就收，连夜跑路", "kind": "goldMult", "mult": 6, "log": "你抱着筹码消失在夜色里。哥布林骂骂咧咧，但还款协议还得继续履行。"}]}, {"id": "evt_altar_snack", "tier": "t2", "lines": ["[03:40] 路过深渊祭坛，顺手把魔王的贡品偷吃了。全属性暴涨 {mult}。", "魔王表示根本不记得贡品里有什么。"], "reward": {"kind": "buff", "zone": "allDmg", "mult": 50, "durationSec": 600}, "choices": [{"text": "吃干抹净，把盘子也舔了", "kind": "buff", "zone": "allDmg", "mult": 100, "durationSec": 300, "log": "贡品能量暴走，全属性 ×100（5分钟）。魔王：谁动了我的人参果？！"}, {"text": "只吃一半，剩下的摆回原样", "kind": "goldMult", "mult": 30, "log": "细水长流的偷吃才是可持续摸鱼。获得 {gold} 金币。"}]}, {"id": "evt_bad_review_resign", "tier": "t2", "lines": ["[04:05] 键盘诗人给深渊领主写了篇800字小作文。领主看完当场辞职，", "掉落装备 ×3，并留下遗言：你们这个团队太卷了。"], "reward": {"kind": "goldMult", "mult": 80}, "choices": [{"text": "把小作文发到全深渊论坛", "kind": "gamble", "chance": 0.7, "win": {"kind": "goldMult", "mult": 120, "log": "帖子爆火！深渊网友打赏如潮水"}, "lose": {"kind": "goldLoss", "rate": 0.3, "log": "领主的律师函比帖子先到。深渊司法体系反应惊人地快。"}}, {"text": "私下只发给领主本人", "kind": "goldMult", "mult": 60, "log": "领主看完当场辞职，临走前把保险柜密码留给了你。"}]}, {"id": "evt_demon_team_building", "tier": "t2", "lines": ["[05:22] 恶魔团建，全员喝多。趁乱搜刮宝箱 ×7，顺手把团建横幅", "「本季度血祭KPI完成率120%」撕下来做了件披风。"], "reward": {"kind": "buff", "zone": "goldGain", "mult": 100, "durationSec": 900}, "choices": [{"text": "宝箱全搜，横幅披风也要", "kind": "buff", "zone": "goldGain", "mult": 150, "durationSec": 900, "log": "披风上身，恶魔团建群对你禁言。金币获取 ×150（15分钟）。"}, {"text": "只偷横幅，宝箱留给同事", "kind": "goldMult", "mult": 50, "log": "同事恶魔感动落泪，纷纷用金币感谢你的不搜之恩。"}]}, {"id": "evt_angel_service_call", "tier": "t2", "lines": ["[06:00] 天使客服来电：亲亲，您的堕落申请已通过审核哦～", "获得【堕落者积分】，可兑换免下坠套餐（已自动兑换）。"], "reward": {"kind": "buff", "zone": "offlineGain", "mult": 50, "durationSec": 1800}, "choices": [{"text": "接受堕落套餐（含小食）", "kind": "buff", "zone": "offlineGain", "mult": 80, "durationSec": 1800, "log": "堕落者积分到账，离线收益 ×80（30分钟）。天堂那边显示「该用户已注销」。"}, {"text": "反手举报天使接私活", "kind": "gamble", "chance": 0.6, "win": {"kind": "goldMult", "mult": 150, "log": "举报属实！天使被调去前台，举报奖金丰厚"}, "lose": {"kind": "goldLoss", "rate": 0.4, "log": "天使反手甩出你的工牌照片：「亲，黑证据我们是专业的」"}}]}, {"id": "evt_raise_denied", "tier": "t1", "lines": ["[07:31] 骷髅兵工号033申请调薪被拒，愤怒转化为攻击力 ×{mult}。", "HR恶魔在本子上记了一笔：该员工情绪不稳定，建议重用。"], "reward": {"kind": "buff", "zone": "atk", "mult": 30, "durationSec": 300}}, {"id": "evt_insomnia_totem", "tier": "t1", "lines": ["[08:45] 系统检测到你一夜没睡，赠送圣物【黑眼圈图腾】。", "图腾铭文：疲惫就是力量。"], "reward": {"kind": "buff", "zone": "atkSpeed", "mult": 10, "durationSec": 600}}, {"id": "evt_queue_jump", "tier": "t1", "lines": ["[01:07] 一只史莱姆试图插队进本层刷怪队列，被全员用眼神物理超度。", "战利品按遗产法分配完毕。"], "reward": {"kind": "goldMult", "mult": 3}}, {"id": "evt_boss_ppt", "tier": "t3", "lines": ["[11:11] 万魔殿会议室泄压，魔王废弃的季度汇报PPT飘落战场。", "页页都是「赋能」「闭环」「抓手」。敌人看不懂，但大受震撼，全体眩晕并掉落 {gold} 金币。"], "reward": {"kind": "goldMult", "mult": 300}}, {"id": "evt_god_watching_drama", "tier": "t3", "lines": ["[13:37] 你摸进了神座摸鱼间。神明正在追剧，没空理你。", "顺手拿走了供桌上的神格零食，全属性 ×{mult}。神：算了懒得追责。"], "reward": {"kind": "buff", "zone": "allDmg", "mult": 400, "durationSec": 1200}}, {"id": "evt_bard_emoji", "tier": "t1", "lines": ["[03:03] 键盘诗人往敌方频道发了个「微笑」表情。", "敌人集体破防，开始互相写小作文。"], "reward": {"kind": "buff", "zone": "critChance", "mult": 20, "durationSec": 120}, "choices": [{"text": "再补一个【捂脸】", "kind": "buff", "zone": "critChance", "mult": 30, "durationSec": 180, "log": "敌方频道集体破防，破绽百出，暴击率 ×30（3分钟）。"}, {"text": "直接开团：三千字檄文连夜赶出", "kind": "goldMult", "mult": 25, "log": "檄文发完，敌人排队打赏求你别写了。"}]}, {"id": "evt_mine_shift_swap", "tier": "t1", "lines": ["[22:00] 深渊矿场夜班交班。白班小鬼偷懒时间被折算成了 {gold} 金币绩效。", "打卡机对此表示欣慰。"], "reward": {"kind": "goldMult", "mult": 6}}, {"id": "evt_necro_contract_renew", "tier": "t3", "lines": ["[00:00] 资本家死灵法师与恶魔工会完成年度续约：薪资不变，工时翻倍。", "恶魔们含泪挖出了 {gold} 金币的矿产资源。"], "reward": {"kind": "goldMult", "mult": 150}}, {"id": "evt_goblin_wedding", "tier": "t2", "lines": ["[18:88] 被你打爆过的哥布林家族办喜事，给你发了请帖。", "随了2金币份子钱，回礼是一整箱战利品。礼尚往来，深渊传统。"], "reward": {"kind": "goldMult", "mult": 60}, "choices": [{"text": "随个大份子（当前金币的10%）", "kind": "gamble", "chance": 0.65, "win": {"kind": "goldMult", "mult": 200, "log": "哥布林家族感念大恩，回礼直接用马车拉"}, "lose": {"kind": "goldLoss", "rate": 0.15, "log": "份子钱随完，主人家还问你要了打车费。"}}, {"text": "随 2 金币，礼数到位就行", "kind": "goldMult", "mult": 8, "log": "哥布林规矩：随2币不嫌少，回礼按人头算。礼尚往来，深渊传统。"}]}, {"id": "evt_table_flip_rehearsal", "tier": "t4", "lines": ["[99:99] 你对着空气练习掀桌子，结果把本时间线的桌子真掀了。", "魔王赔了一笔精神损失费，当前全属性 ×{mult}，持续到下次转生。"], "reward": {"kind": "buff", "zone": "allDmg", "mult": 1000, "durationSec": 999999, "log": "本局所有乘区 ×1000（转生前有效）"}}, {"id": "evt_dev_nerf_letter", "tier": "t4", "lines": ["[04:44] 策划的平衡性补丁在路上丢了，被深渊邮差捡到并塞进了你的宝箱。", "里面是一张手写纸条：本次加强 ×{mult}，别声张。"], "reward": {"kind": "buff", "zone": "allDmg", "mult": 800, "durationSec": 3600}, "choices": [{"text": "偷偷用掉，别声张", "kind": "buff", "zone": "allDmg", "mult": 800, "durationSec": 3600, "log": "纸条生效：全属性 ×800（1小时）。你体验到了策划失去的良心。"}, {"text": "发到深渊群里炫耀", "kind": "gamble", "chance": 0.5, "win": {"kind": "buff", "zone": "allDmg", "mult": 2000, "durationSec": 60, "log": "全深渊接力转发，能量共振 ×2000（60秒）！"}, "lose": {"kind": "goldLoss", "rate": 0.6, "log": "全服都在蹭你的buff，维护费全算你头上。"}}]}, {"id": "evt_skeleton_union", "tier": "t3", "lines": ["[16:16] 骷髅兵工会集体谈判成功：每周三下午带薪发呆。", "发呆期间灵界能量意外充沛，离线收益模型 ×{mult} 修正。"], "reward": {"kind": "buff", "zone": "offlineGain", "mult": 250, "durationSec": 7200}}, {"id": "evt_leek_blessing", "tier": "t2", "lines": ["[05:55] 深渊农田丰收。大葱之神(自封的)赐福：攻击 ×{mult}，", "代价是接下来1小时所有暴击数字都变成绿色葱花。"], "reward": {"kind": "buff", "zone": "atk", "mult": 40, "durationSec": 3600}}]}</script>
 <script>
 'use strict';
 // ============ 应用层（DOM / Canvas / 存档 / 主循环） ============
 const AFFIX = JSON.parse(document.getElementById('affix-data').textContent);
+const GEARCFG = JSON.parse(document.getElementById('gear-data').textContent);
 const EVENTS = JSON.parse(document.getElementById('event-data').textContent);
 const C = ECON.CONFIG;
 const D = Decimal;
@@ -364,14 +606,22 @@ const S = {
   stunUntil: 0, nextEventIn: C.eventBaseIntervalSec * 1000,
   combo: 0, lastKillAt: 0,
   skillAt: { fury: 0, slam: 0, tax: 0 },
+  gear: { weapon: null, armor: null, trinket: null },
+  enh: { weapon: 0, armor: 0, trinket: 0 },
+  pity: { weapon: 0, armor: 0, trinket: 0 },
+  scrap: 0, pendingEquip: null,
   skillLv: { fury: 0, slam: 0, tax: 0 },
-  stats: { kills: 0, bosses: 0, skillUses: 0, taunts: 0, maxCombo: 0, cdReduce: 0, tauntCdReduce: 0, claimed: [] },
+  stats: { kills: 0, bosses: 0, skillUses: 0, taunts: 0, maxCombo: 0, cdReduce: 0, tauntCdReduce: 0, claimed: [], lifetimeSouls: 0 },
+  achievements: [], timeline: [],
   tauntUntil: 0, tauntCdUntil: 0,
 };
 const qualityColor = {}; AFFIX.quality.forEach(q => qualityColor[q.id] = q.color);
 
 function currentBoss() { return ECON.isBoss(S.zone) ? ECON.bossName(S.zone) : null; }
-function mults() { return ECON.computeMults(S.affixes, AFFIX, currentBoss(), S.buffs, Math.pow(C.shopTyrannyMult, S.shop.tyr), Date.now(), { spdLv: S.spd }); }
+const GSYS = window.GEAR.createGearSystem(GEARCFG, ECON);
+const GEARQ = {}; GEARCFG.quality.forEach(q => GEARQ[q.id] = q);
+function gearEffects() { return GSYS.itemEffects(S.gear, S.enh); }
+function mults() { return ECON.computeMults(S.affixes, AFFIX, currentBoss(), S.buffs, Math.pow(C.shopTyrannyMult, S.shop.tyr) * Math.pow(1.05, S.achievements.length), Date.now(), { spdLv: S.spd, gearEffects: gearEffects() }); }
 function crtP() { return ECON.critParams(S.crt); }
 function comboMult() { return Math.min(C.comboCap, 1 + S.combo * C.comboStep); }
 
@@ -385,10 +635,11 @@ function softReset() {
 // ---------- 存档 ----------
 function save() {
   localStorage.setItem('abyss_fish_v1', JSON.stringify({
-    v: 3, gold: S.gold.toString(), zone: S.zone, level: S.level, prestige: S.prestige,
+    v: 5, gold: S.gold.toString(), zone: S.zone, level: S.level, prestige: S.prestige,
     spd: S.spd, crt: S.crt, souls: S.souls, shop: S.shop, maxZone: S.maxZone, allMax: S.allMax,
-    skillLv: S.skillLv, stats: S.stats,
-    affixes: S.affixes, buffs: S.buffs, lastSave: Date.now(),
+    skillLv: S.skillLv, stats: S.stats, achievements: S.achievements, timeline: S.timeline,
+    gear: S.gear, enh: S.enh, pity: S.pity, scrap: S.scrap,
+    buffs: S.buffs, lastSave: Date.now(),
   }));
 }
 function load() {
@@ -409,6 +660,13 @@ function load() {
         S.skillLv = d.skillLv || S.skillLv;
         S.stats = Object.assign(S.stats, d.stats || {});
         S.stats.claimed = (d.stats && d.stats.claimed) || [];
+        if (d.v >= 4) { S.achievements = d.achievements || []; S.timeline = d.timeline || []; }
+        if (d.v >= 5) {
+          S.gear = d.gear || S.gear; S.enh = d.enh || S.enh; S.pity = d.pity || S.pity; S.scrap = d.scrap || 0;
+        } else {
+          // v4 迁移：旧词缀收藏制退役，按数量补偿碎屑（5屑/条）
+          S.scrap = (d.affixes || []).length * 5;
+        }
       }
     }
     S.hp = S.hpMax = ECON.zoneHP(S.zone);
@@ -435,12 +693,31 @@ function doStrike() {
   const { dmg, crit } = ECON.strikeDamage(ECON.atkOf(S.level), m, Math.random, crtP());
   let effDmg = dmg;
   if (boss) effDmg = dmg.times(m.bossDmg).times(Date.now() < S.tauntUntil ? 3 : 1);
-  // 词缀 proc：处决
-  for (const id of S.affixes) {
-    const a = AFFIX.affixes.find(x => x.id === id); if (!a) continue;
-    for (const e of a.effects) {
-      if (e.type === 'proc' && e.effect && e.effect.kind === 'execute' && Math.random() < e.chance) {
-        if (S.hp.div(S.hpMax).toNumber() < e.effect.threshold) { effDmg = new D('1e3000'); addFloater('下岗！', '#ff3c3c', 26); }
+  // 装备特效 proc：处决/真伤/Buff/掀桌/眩晕
+  for (const slotKey of Object.keys(S.gear)) {
+    const it = S.gear[slotKey]; if (!it) continue;
+    for (const a of it.affixes) {
+      if (a.kind !== 'special') continue;
+      for (const e of a.effects) {
+        if (e.type !== 'proc') continue;
+        const eff = e.effect || {};
+        if (eff.kind === 'execute' && Math.random() < e.chance && S.hp.div(S.hpMax).toNumber() < eff.threshold) {
+          effDmg = new D('1e3000'); addFloater('下岗！', '#ff3c3c', 26);
+        } else if (eff.kind === 'trueDmg' && Math.random() < e.chance) {
+          const td = ECON.atkOf(S.level).times(m.atk).times(m.allDmg).times(eff.mult);
+          effDmg = effDmg.plus(td);
+          addFloater('策划挨打! ' + ECON.fmt(td), '#3cff9e', 24);
+          if (eff.log) addLog('[特效] ' + eff.log, 'ev-t3');
+        } else if (eff.kind === 'buff' && Math.random() < e.chance) {
+          S.buffs.push({ zone: eff.zone, mult: eff.mult, until: Date.now() + eff.durationSec * 1000 });
+          if (eff.log) addLog('[特效] ' + eff.log, '');
+        } else if (eff.kind === 'globalMult' && Math.random() < e.chance) {
+          S.buffs.push({ kind: 'global', mult: eff.mult, until: Date.now() + (eff.durationSec || 5) * 1000 });
+          if (eff.log) addLog('[特效] ' + eff.log, 'ev-t3');
+        } else if (eff.kind === 'stun' && Math.random() < e.chance) {
+          S.stunUntil = Date.now() + eff.durationSec * 1000;
+          if (eff.log) addLog('[特效] ' + eff.log, '');
+        }
       }
     }
   }
@@ -467,7 +744,7 @@ function kill(m) {
   S.gold = S.gold.plus(ECON.zoneGold(S.zone).times(m.goldGain).times(comboMult()));
   killFx();
   if (ECON.isBoss(S.zone)) {
-    dropAffix();
+    dropGear();
     addLog(`[战斗] ${ECON.bossName(S.zone)} 被物理超度。临终遗言："我本可以直接躺平的……"`, '');
   }
   S.zone += 1;
@@ -477,38 +754,99 @@ function kill(m) {
   }
 }
 
-// ---------- 词缀掉落 ----------
-function dropAffix() {
-  const r = Math.random() * 100;
-  const q = r < 5 ? 'primal' : r < 30 ? 'ancient' : 'yellow';
-  const pool = AFFIX.affixes.filter(a => a.quality === q && a.id !== 'aff_glitch_blank');
-  const pick = pool[Math.floor(Math.random() * pool.length)];
-  if (!pick) return;
-  S.affixes.push(pick.id);
-  const qName = AFFIX.quality.find(x => x.id === q).name;
-  showPopup(`【掉落】${qName}品质装备！`, [`词缀：${pick.text}`, q === 'primal' ? '（全服广播：这狗屎运建议买彩票）' : ''], 'ev-t3');
-  addLog(`[掉落] ${qName} · ${pick.text}`, 'ev-t3');
+// ---------- 装备掉落（GS对比 / 自动分解 / 一键换装） ----------
+const BS_TEXTS = {
+  ok: ['成了！这手艺，深渊工商局看了都想给你颁证。', '武器在你手里嗡嗡作响，像是在催你快点去上班（超度）。', '铁匠看了眼成品，默默把自己的招牌改成了"二流铁匠铺"。', '叮的一声脆响。旁白都想不出来词了，反正很强。', '强化成功。骷髅兵集体鼓掌，掌心全是灰。'],
+  crit: ['轰！炉火冲天——这一锤直接把材料锤出了两级的气势！', '铁匠：我不是故意的，是锤子它自己动的。', '史诗级强化！魔王在群里点赞了。'],
+  fail: ['失败了。但铁匠说：这波亏的是材料，赚的是经验。', '铁匠把锅甩给矿石：这批货，产地在哥布林那，你懂的。', '失败。铁匠表示深渊引力常数今天不太对，建议向魔王反映。', '差一点就成了！差的那一点，是命运的安排。', '失败。但保底进度+1，铁匠拍胸口：下次必成，我拿工牌担保。', '铁匠凝视炉火良久，说："其实失败也是强化的一种。"你竟无法反驳。'],
+  refuse: ['铁匠翻了翻你的材料堆："这不是强化，这是上香。"', '材料不够。铁匠建议你去矿场看看那些打卡的小鬼。'],
+};
+const pick1 = arr => arr[Math.floor(Math.random() * arr.length)];
+function bsSay(text) { document.getElementById('bsMsg').textContent = '铁匠：' + text; }
+function equipItem(item) {
+  const old = S.gear[item.slot];
+  if (old) S.scrap += GSYS.salvageValue(old);
+  S.gear[item.slot] = item;
+}
+function dropGear() {
+  const item = GSYS.rollItem(S.zone, true);
+  const cur = S.gear[item.slot];
+  const disp = GSYS.dropDisposition(item, cur ? cur.gs : 0);
+  if (disp.action === 'salvage') {
+    S.scrap += disp.scrap;
+    if (Math.random() < 0.3) addLog(`[分解] ${item.name}（GS ${item.gs}）不如身上的货，已碎成 ${disp.scrap} 碎屑。铁匠连头都没抬。`, '');
+    return;
+  }
+  // 高于当前：对比弹窗 + 10秒自动装备（拒绝囤积）
+  S.pendingEquip = { item, at: Date.now() };
+  const qName = GEARQ[item.quality].name;
+  const affTexts = item.affixes.map(a => (a.kind === 'special' ? '★ ' : '') + (a.text || GEARCFG.basicAffixes[a.key].text + ' ×' + ECON.fmt(new D(a.mult)))).join('；');
+  showPopup(`【掉落】${qName} · ${item.name}`,
+    [`GS：${item.gs}  vs  当前装备 GS：${cur ? cur.gs : 0}`, `词条：${affTexts}`, '（10秒后自动装备，深渊反对囤积）'], 'ev-t3',
+    { sticky: true, buttons: [{ label: '一键装备', cb: () => { S.pendingEquip = null; equipItem(item); addLog(`[换装] ${item.name} 已上槽（GS ${item.gs}），旧件自动分解。`, 'ev-t3'); } }] });
+  addLog(`[掉落] ${qName}「${item.name}」GS ${item.gs}（${item.slot === 'weapon' ? '武器' : item.slot === 'armor' ? '防具' : '饰品'}槽）`, 'ev-t3');
 }
 
 // ---------- 抽象事件 ----------
+// 选项效果统一结算（goldMult/buff/gamble/goldLoss 四种）
+function applyEventEffect(e, label) {
+  const m = mults();
+  const mad = Math.pow(C.shopMadnessMult, S.shop.mad);
+  if (e.kind === 'goldMult') {
+    const g = ECON.zoneGold(S.zone).times(e.mult * mad).times(m.goldGain);
+    S.gold = S.gold.plus(g);
+    addLog('[事件' + label + '] ' + (e.log || '') + ' → ' + ECON.fmt(g) + ' 金币', 'ev-t2');
+    return ECON.fmt(g) + ' 金币到手';
+  }
+  if (e.kind === 'buff') {
+    S.buffs.push({ zone: e.zone, mult: e.mult, until: e.durationSec > 100000 ? 0 : Date.now() + e.durationSec * 1000 });
+    addLog('[事件' + label + '] ' + (e.log || ''), 'ev-t3');
+    return e.zone + ' 乘区 ×' + e.mult + '（' + e.durationSec + 's）';
+  }
+  if (e.kind === 'goldLoss') {
+    const lost = S.gold.times(e.rate);
+    S.gold = S.gold.times(1 - e.rate);
+    addLog('[事件' + label + '] ' + (e.log || '') + ' → 损失 ' + ECON.fmt(lost) + ' 金币', 'ev-t4');
+    return '损失了 ' + ECON.fmt(lost) + ' 金币。深渊记账从不延迟。';
+  }
+  return '';
+}
 function fireEvent() {
   const ev = ECON.pickEvent(EVENTS, Math.random);
   const m = mults();
-  let body = [];
-  for (const line of ev.lines) {
-    let s = line.replace('{gold}', ECON.fmt(ECON.zoneGold(S.zone).times(ev.reward.mult || 1).times(m.goldGain)))
-               .replace('{mult}', ECON.fmt(new D(ev.reward.mult || 1)));
-    body.push(s);
-  }
   const mad = Math.pow(C.shopMadnessMult, S.shop.mad);
-  const rw = ev.reward;
-  if (rw.kind === 'goldMult') {
-    S.gold = S.gold.plus(ECON.zoneGold(S.zone).times(rw.mult * mad).times(m.goldGain));
-  } else if (rw.kind === 'buff') {
-    S.buffs.push({ zone: rw.zone, mult: rw.mult, until: rw.durationSec > 100000 ? 0 : Date.now() + rw.durationSec * 1000 });
-  }
+  const title = `【${EVENTS.tiers.find(t => t.id === ev.tier).label}】${ev.id === 'evt_table_flip_rehearsal' ? '传说事件！' : '深渊摸鱼实录'}`;
+  const body = ev.lines.map(l => l
+    .replace('{gold}', ECON.fmt(ECON.zoneGold(S.zone).times((ev.reward.mult || 1) * mad).times(m.goldGain)))
+    .replace('{mult}', ECON.fmt(new D(ev.reward.mult || 1))));
   addLog(body.join(' '), 'ev-t' + ev.tier.slice(1));
-  showPopup(`【${EVENTS.tiers.find(t => t.id === ev.tier).label}】${ev.id === 'evt_table_flip_rehearsal' ? '传说事件！' : '深渊摸鱼实录'}`, body, 'ev-t' + ev.tier.slice(1));
+  // 选项分支：弹窗二选一，15秒未选自动执行第一项
+  if (ev.choices) {
+    S.pendingEvent = ev; S.pendingEventAt = Date.now();
+    showPopup(title + ' · 你来决策', body, 'ev-t' + ev.tier.slice(1), {
+      sticky: true,
+      buttons: ev.choices.map((c, i) => ({
+        label: (i === 0 ? 'A: ' : 'B: ') + c.text,
+        cb: () => resolveChoice(ev, i),
+      })),
+    });
+    return;
+  }
+  const rw = ev.reward;
+  const result = applyEventEffect(rw, '自动');
+  showPopup(title, body.concat(['→ ' + result]), 'ev-t' + ev.tier.slice(1));
+}
+function resolveChoice(ev, idx) {
+  S.pendingEvent = null;
+  const c = ev.choices[idx];
+  let outcome;
+  if (c.kind === 'gamble') {
+    const win = Math.random() < c.chance;
+    outcome = applyEventEffect(win ? c.win : c.lose, win ? '赌赢' : '赌输');
+  } else {
+    outcome = applyEventEffect(c, '选项' + (idx === 0 ? 'A' : 'B'));
+  }
+  showPopup('【事件结算】', ['你选择了：' + c.text, '→ ' + outcome], 'ev-t' + ev.tier.slice(1));
 }
 
 // ---------- 日志与弹窗 ----------
@@ -521,14 +859,26 @@ function addLog(text, cls) {
   while (logEl.children.length > 40) logEl.removeChild(logEl.firstChild);
   logEl.scrollTop = logEl.scrollHeight;
 }
-function showPopup(title, lines, cls) {
+function showPopup(title, lines, cls, opts) {
   document.getElementById('popupTitle').textContent = title;
   const b = document.getElementById('popupBody');
   b.innerHTML = '';
   lines.forEach(l => { const p = document.createElement('div'); p.textContent = l; b.appendChild(p); });
-  document.getElementById('popup').classList.remove('hidden');
   clearTimeout(showPopup._t);
-  showPopup._t = setTimeout(() => document.getElementById('popup').classList.add('hidden'), 6000);
+  if (opts && opts.buttons) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;';
+    opts.buttons.forEach((bt, i) => {
+      const el = document.createElement('button');
+      el.textContent = bt.label;
+      el.style.cssText = 'font-size:11px;padding:6px 10px;';
+      el.onclick = () => { bt.cb(); if (opts.sticky) { document.getElementById('popup').classList.add('hidden'); } };
+      row.appendChild(el);
+    });
+    b.appendChild(row);
+  }
+  document.getElementById('popup').classList.remove('hidden');
+  if (!(opts && opts.sticky)) showPopup._t = setTimeout(() => document.getElementById('popup').classList.add('hidden'), 6000);
 }
 
 // ---------- 转生 ----------
@@ -537,17 +887,45 @@ const CEREMONIES = [
   '时间线不顺眼？掀了。桌子砸中魔王后脑勺，它赔了你一笔精神损失费（永久全局 ×10），并抱怨工伤流程太复杂。',
   '角色留下一封辞职信穿越到下个时间线。HR 恶魔批了，还多发了一份遣散费（永久全局 ×10）。祝你前程似锦，前同事说。',
 ];
+function timelineTitle(maxZone) {
+  if (maxZone < 10) return '路过深渊（假装没来过）';
+  if (maxZone < 20) return '磨洋工学士';
+  if (maxZone < 30) return '矿场卷王';
+  if (maxZone < 40) return '会议室幸存者';
+  if (maxZone < 50) return '天使客服噩梦';
+  return '掀桌宗师·深渊传说';
+}
 document.getElementById('prestigeBtn').onclick = () => {
   const gain = ECON.prestigeSouls(S.maxZone);
   S.souls += gain;
+  S.stats.lifetimeSouls = (S.stats.lifetimeSouls || 0) + gain;
   S.prestige += 1;
+  S.timeline.unshift({ n: S.prestige, maxZone: S.maxZone, souls: gain, title: timelineTitle(S.maxZone), date: new Date().toLocaleDateString() });
   document.getElementById('ceremonyText').textContent =
-    CEREMONIES[Math.floor(Math.random() * CEREMONIES.length)] + '\n\n—— 本次掀桌结算：黑魂工资 +' + gain + ' 点（累计 ' + S.souls + ' 点）。去商店花掉它，不投资的转生是耍流氓。';
+    CEREMONIES[Math.floor(Math.random() * CEREMONIES.length)] + '\n\n—— 本次掀桌结算：黑魂工资 +' + gain + ' 点（累计 ' + S.souls + ' 点）。时间线「' + timelineTitle(S.maxZone) + '」已收入收藏馆。';
   document.getElementById('ceremony').classList.remove('hidden');
   softReset();
   save();
 };
 document.getElementById('ceremonyOk').onclick = () => document.getElementById('ceremony').classList.add('hidden');
+
+// ===== 成就墙/时间线收藏馆 渲染 =====
+function renderHall() {
+  const on = S.achievements.length;
+  document.getElementById('achSummary').textContent =
+    '成就 ' + on + '/' + ACH_DEFS.length + ' · 成就全局加成 ×' + (Math.pow(1.05, on)).toFixed(2) +
+    ' · 黑魂工资累计 ' + (S.stats.lifetimeSouls || 0) + ' 点 · 掀掉时间线 ' + S.timeline.length + ' 条';
+  document.getElementById('achGrid').innerHTML = ACH_DEFS.map(a => {
+    const unlocked = S.achievements.includes(a.id);
+    return `<div class="ach ${unlocked ? 'on' : 'off'}"><b>${unlocked ? '🏆 ' : '🔒 '}${a.name}</b>${a.desc}${unlocked ? '<small style="color:var(--parchment-dim)"> 已领' + 1 + '点工资</small>' : ''}</div>`;
+  }).join('');
+  const tl = document.getElementById('tlList');
+  tl.innerHTML = S.timeline.length === 0
+    ? '<div style="font-size:11px;color:var(--parchment-dim)">收藏馆空空如也。时间线不掀，收藏馆永远欠费。</div>'
+    : S.timeline.map(t => `<div class="tl"><b>时间线 #${t.n}</b> 「${t.title}」 <small>摸到第${t.maxZone}区 · 黑魂工资 +${t.souls}点 · ${t.date}</small></div>`).join('');
+}
+document.getElementById('hallBtn').onclick = () => { renderHall(); document.getElementById('hallModal').classList.remove('hidden'); };
+document.getElementById('hallClose').onclick = () => document.getElementById('hallModal').classList.add('hidden');
 
 // ---------- 升级 ----------
 function trackInfo(t) {
@@ -629,11 +1007,37 @@ document.getElementById('tauntBtn').onclick = () => {
   addLog('[战斗] 你对Boss喊了声「嘘！」。它当场社死，PPT停页，受到伤害 ×3（6秒）', 'ev-t3');
 };
 
+// ===== 铁匠铺强化 =====
+const ENH_SLOTS = { enhWeapon: 'weapon', enhArmor: 'armor', enhTrinket: 'trinket' };
+for (const [btn, slot] of Object.entries(ENH_SLOTS)) {
+  document.getElementById(btn).onclick = () => enhanceSlot(slot);
+}
+function enhanceSlot(slot) {
+  const lv = S.enh[slot];
+  if (lv >= GEARCFG.enhance.maxLevel) return;
+  const sc = GSYS.scrapCost(lv), gc = GSYS.goldCost(lv, ECON.passiveGold);
+  if (S.scrap < sc || S.gold.lt(gc)) { bsSay(pick1(BS_TEXTS.refuse)); return; }
+  S.scrap -= sc; S.gold = S.gold.minus(gc);
+  const r = GSYS.enhanceRoll(lv, S.pity[slot]);
+  S.pity[slot] = r.pity;
+  const slotName = { weapon: '武器', armor: '防具', trinket: '饰品' }[slot];
+  if (r.success) {
+    S.enh[slot] = r.newLv;
+    const txt = r.crit ? pick1(BS_TEXTS.crit) + `（暴击+2级 → ${slotName} Lv.${r.newLv}）` : pick1(BS_TEXTS.ok) + `（${slotName} Lv.${r.newLv}）`;
+    bsSay(txt);
+    addLog(`[强化] ${slotName}槽 Lv.${lv}→${r.newLv}${r.crit ? '（暴击！）' : ''}`, 'ev-t2');
+    if (r.newLv >= GEARCFG.enhance.maxLevel) addLog(`[里程碑] ${slotName}槽满级！铁匠铺门口挂上了你的画像。`, 'ev-t3');
+  } else {
+    bsSay(pick1(BS_TEXTS.fail));
+    addLog(`[强化] ${slotName}槽失败（保底进度 ${r.pity}/2）。材料进了深渊的胃。`, '');
+  }
+}
+
 // ===== 目标系统（顺序任务链，奖励有界） =====
 const OBJECTIVES = [
   { text: '到达第 5 区', check: () => S.maxZone >= 5, reward: '金币：当前区金币 ×80', apply: () => S.gold = S.gold.plus(ECON.zoneGold(S.zone).times(80).times(mults().goldGain)) },
   { text: '物理超度首个 Boss（区10）', check: () => S.stats.bosses >= 1, reward: '黑魂工资 +1 点', apply: () => S.souls += 1 },
-  { text: '收集 3 件词缀', check: () => S.affixes.length >= 3, reward: '金币：当前区金币 ×150', apply: () => S.gold = S.gold.plus(ECON.zoneGold(S.zone).times(150).times(mults().goldGain)) },
+  { text: '装备 2 件深渊装备', check: () => Object.values(S.gear).filter(Boolean).length >= 2, reward: '金币：当前区金币 ×150', apply: () => S.gold = S.gold.plus(ECON.zoneGold(S.zone).times(150).times(mults().goldGain)) },
   { text: '连杀达到 ×10', check: () => S.stats.maxCombo >= 10, reward: '黑魂工资 +1 点', apply: () => S.souls += 1 },
   { text: '使用主动技能 10 次', check: () => S.stats.skillUses >= 10, reward: '技能冷却永久 -10%', apply: () => S.stats.cdReduce = Math.min(0.3, (S.stats.cdReduce || 0) + 0.1) },
   { text: '对 Boss 嘘他 3 次', check: () => S.stats.taunts >= 3, reward: '嘘他冷却 -4 秒', apply: () => S.stats.tauntCdReduce = Math.min(8, (S.stats.tauntCdReduce || 0) + 4) },
@@ -656,6 +1060,36 @@ document.getElementById('objList').addEventListener('click', e => {
   if (b) claimObjective(Number(b.dataset.obj));
 });
 
+// ===== 成就墙 =====
+const ACH_DEFS = [
+  { id: 'a_boss1', name: '初次超度', desc: '物理超度首个Boss', check: () => S.stats.bosses >= 1 },
+  { id: 'a_zone30', name: '卷入深渊', desc: '到达第30区', check: () => S.maxZone >= 30 },
+  { id: 'a_zone50', name: '掀桌预备役', desc: '到达第50区', check: () => S.maxZone >= 50 },
+  { id: 'a_combo30', name: '屠杀时刻', desc: '连杀达到×30', check: () => S.stats.maxCombo >= 30 },
+  { id: 'a_prestige1', name: '领工资的人', desc: '完成首次转生', check: () => S.prestige >= 1 },
+  { id: 'a_souls20', name: '黑魂资本家', desc: '累计获得20点黑魂工资', check: () => (S.stats.lifetimeSouls || 0) >= 20 },
+  { id: 'a_skillmax', name: '技能全书', desc: '任意技能升至满级', check: () => Object.entries(S.skillLv).some(([k, v]) => v >= ECON.SKILL_MAX[k]) },
+  { id: 'a_taunt10', name: 'PPT克星', desc: '对Boss嘘他10次', check: () => S.stats.taunts >= 10 },
+  { id: 'a_goldT', name: '万亿富豪', desc: '持有金币突破1T', check: () => S.gold.gte(new D('1e12')) },
+  { id: 'a_primal', name: '太古天选', desc: '穿上一件远古太古装备', check: () => Object.values(S.gear).some(it => it && it.quality === 'primal') },
+  { id: 'a_kills1000', name: '千人斩', desc: '累计击杀1000只', check: () => S.stats.kills >= 1000 },
+  { id: 'a_allobj', name: 'KPI满分', desc: '领取全部10个深渊目标', check: () => S.stats.claimed.length >= OBJECTIVES.length },
+];
+function checkAchievements() {
+  for (const a of ACH_DEFS) {
+    if (S.achievements.includes(a.id)) continue;
+    let ok = false;
+    try { ok = a.check(); } catch (e) { ok = false; }
+    if (ok) {
+      S.achievements.push(a.id);
+      S.souls += 1;
+      S.stats.lifetimeSouls = (S.stats.lifetimeSouls || 0) + 1;
+      showPopup('🏆 成就解锁！', ['「' + a.name + '」—— ' + a.desc, '奖励：黑魂工资 +1 点 + 永久全局 ×1.05', '当前成就全局加成：×' + (Math.pow(1.05, S.achievements.length)).toFixed(2)], 'ev-t3');
+      addLog('[成就] 解锁「' + a.name + '」（' + S.achievements.length + '/' + ACH_DEFS.length + '）。深渊人事部已为你建档。', 'ev-t3');
+    }
+  }
+}
+
 // ===== 黑魂商店 =====
 function buyShop(k) {
   const cost = ECON.shopCost(S.shop[k]);
@@ -669,7 +1103,7 @@ document.getElementById('shopMad').onclick = () => buyShop('mad');
 
 // ---------- 主循环 ----------
 const TICK = 0.1;
-let lastTickAt = performance.now(), saveTimer = 0, eventTimer = 0;
+let lastTickAt = performance.now(), saveTimer = 0, eventTimer = 0, achTimer = 0;
 // 逻辑循环与渲染解耦：setInterval + 自适应子步长。
 // 修复：rAF 驱动逻辑会在后台标签页被浏览器节流(rAF降至~1Hz)，放置游戏挂机严重减速。
 function tickStep() {
@@ -682,13 +1116,29 @@ function tickStep() {
   const now = Date.now();
   S.buffs = S.buffs.filter(b => b.until === 0 || now < b.until);
   eventTimer += TICK;
-  if (eventTimer >= S.nextEventIn / 1000) {
+  // 换装对比 10 秒超时自动装备
+  if (S.pendingEquip && Date.now() - S.pendingEquip.at > 10000) {
+    const it = S.pendingEquip.item;
+    S.pendingEquip = null;
+    equipItem(it);
+    addLog(`[换装] 超时自动装备 ${it.name}（GS ${it.gs}）。深渊替你做了决定。`, 'ev-t2');
+  }
+  // 选项事件挂起中：15秒未决策自动执行第一项（深渊不等人）
+  if (S.pendingEvent && Date.now() - S.pendingEventAt > 15000) {
+    const ev = S.pendingEvent;
+    S.pendingEvent = null;
+    resolveChoice(ev, 0);
+    addLog('[事件] 你摸鱼去了没选，深渊替你选了 A。它说下次记得来开会。', '');
+  }
+  if (eventTimer >= S.nextEventIn / 1000 && !S.pendingEvent) {
     eventTimer = 0;
     S.nextEventIn = C.eventBaseIntervalSec * (0.6 + Math.random() * 0.9) * 1000 / Math.max(1, m.eventRate * 0.5 * Math.pow(C.shopMadnessMult, S.shop.mad));
     fireEvent();
   }
   saveTimer += TICK;
   if (saveTimer >= 5) { saveTimer = 0; save(); }
+  achTimer += TICK;
+  if (achTimer >= 1) { achTimer = 0; checkAchievements(); }
 }
 function tick() {
   const now = performance.now();
@@ -1031,20 +1481,29 @@ function refreshUI() {
   const taunt = $('tauntBtn');
   taunt.classList.toggle('hidden', !isBoss || now < S.tauntCdUntil);
   if (now < S.tauntUntil) taunt.textContent = '破防中… ×3';
-  const el = $('affixList');
-  if (S.affixes.length === 0) el.innerHTML = '<span style="font-size:11px;color:var(--parchment-dim)">空空如也。去打第一个 Boss（第10区）。</span>';
-  else {
-    el.innerHTML = '';
-    S.affixes.forEach(id => {
-      const a = AFFIX.affixes.find(x => x.id === id); if (!a) return;
-      const chip = document.createElement('span');
-      chip.className = 'chip';
-      chip.style.borderColor = qualityColor[a.quality];
-      chip.style.color = qualityColor[a.quality];
-      chip.textContent = a.text;
-      chip.title = '品质：' + AFFIX.quality.find(q => q.id === a.quality).name;
-      el.appendChild(chip);
-    });
+  // 装备栏渲染
+  const gl = $('gearList');
+  const slotNames = { weapon: '⚔武器', armor: '🛡防具', trinket: '💍饰品' };
+  let ghtml = '';
+  for (const slot of Object.keys(S.gear)) {
+    const it = S.gear[slot];
+    const enhLv = S.enh[slot];
+    if (!it) { ghtml += `<div style="font-size:11px;color:var(--parchment-dim);margin:2px 0">${slotNames[slot]}：空槽（等Boss掉货）</div>`; continue; }
+    const qc = GEARQ[it.quality].color;
+    const aff = it.affixes.map(a => (a.kind === 'special' ? '★' : '×') + ECON.fmt(new D(a.mult))).join(' ');
+    ghtml += `<div class="chip" style="border-color:${qc};color:${qc};display:block;margin:3px 0">${slotNames[slot]} ${it.name} <small>[GS ${it.gs}${enhLv ? ' · 强化+' + enhLv : ''}]</small><br><small>${aff}</small></div>`;
+  }
+  gl.innerHTML = ghtml;
+  // 铁匠按钮
+  $('uiScrap').textContent = ECON.fmt(new D(S.scrap));
+  for (const [btn, slot] of Object.entries(ENH_SLOTS)) {
+    const lv = S.enh[slot];
+    const b = $(btn);
+    if (lv >= GEARCFG.enhance.maxLevel) { $(btn + 'Lv').textContent = 'MAX'; b.disabled = true; continue; }
+    $(btn + 'Lv').textContent = lv;
+    $(btn + 'Cost').textContent = ECON.fmt(new D(GSYS.scrapCost(lv)));
+    $(btn + 'Gold').textContent = ECON.fmt(GSYS.goldCost(lv, ECON.passiveGold));
+    b.disabled = S.scrap < GSYS.scrapCost(lv) || S.gold.lt(GSYS.goldCost(lv, ECON.passiveGold));
   }
 }
 

@@ -11,9 +11,9 @@
     baseCost: 10, costGrowth: 1.14,
     atkSpeed: 1, critChance: 0.05, critMult: 2,
     // 怪物
-    baseHP: 12, hpGrowth: 1.65,
+    baseHP: 12, hpGrowth: 1.75,   // 1.75: 装备系统上线后补偿免费成长源 r_gear≈0.044/区（原1.65墙被穿）
     baseGold: 12, goldGrowth: 1.55,
-    bossEvery: 10, bossHpMult: 6, bossHpCycle: 1.6,
+    bossEvery: 10, bossHpMult: 6, bossHpCycle: 1.75,   // 1.75: 同上补偿
     bossGoldMult: 24, bossGoldCycle: 1.5,
     // 被动收入：默认关闭(passiveRate=0)。
     // 仿真实证：任何稳态被动收入都会填补Boss战收入真空，导致墙点机制彻底失效(墙=收入真空+圈次跳变)。
@@ -125,6 +125,17 @@
     for (const k in m) m[k] *= global;
     m.allDmg *= prestigeMult;
     if (extra && extra.spdLv) m.atkSpeed *= Math.pow(CONFIG.spdGain, Math.min(extra.spdLv, CONFIG.spdMax));
+    // 装备系统：always/conditional 由 computeMults 消费，proc 由应用层战斗结算消费
+    if (extra && extra.gearEffects) {
+      for (const e of extra.gearEffects) {
+        if (e.type === 'always') m[e.zone] *= e.mult;
+        else if (e.type === 'conditional') {
+          const c = e.condition || {};
+          if (c.bossNameMinLength && (!boss || boss.length < c.bossNameMinLength)) continue;
+          m[e.zone] *= e.mult;
+        }
+      }
+    }
     return m;
   }
 

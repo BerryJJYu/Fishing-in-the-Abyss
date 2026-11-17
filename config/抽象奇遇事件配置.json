@@ -4,13 +4,45 @@
     "version": "0.2",
     "game": "深渊摸鱼录",
     "aligned_doc": "步骤1-Web技术架构与核心数值模型.md",
-    "notes": "离线/在线挂机随机事件池。收益分布按策划案：t1(1~10x)权重60 / t2(10~100x)权重30 / t3(100~500x)权重9 / t4(500~1000x)权重1。发疯线Prestige提升t3/t4权重"
+    "notes": "离线/在线挂机随机事件池。收益分布按策划案：t1(1~10x)权重60 / t2(10~100x)权重30 / t3(100~500x)权重9 / t4(500~1000x)权重1。发疯线Prestige提升t3/t4权重；v4: 8个事件增加 choices 选项分支（goldMult/buff/gamble/goldLoss 四种效果类型），在线弹窗二选一，15秒未选自动执行第一项；离线结算仍用原 reward 安全档"
   },
   "tiers": [
-    { "id": "t1", "range": [1, 10],     "weight": 60, "label": "日常抽象" },
-    { "id": "t2", "range": [10, 100],   "weight": 30, "label": "深度发疯" },
-    { "id": "t3", "range": [100, 500],  "weight": 9,  "label": "史诗抽象" },
-    { "id": "t4", "range": [500, 1000], "weight": 1,  "label": "精神状态极不美丽(传说)" }
+    {
+      "id": "t1",
+      "range": [
+        1,
+        10
+      ],
+      "weight": 60,
+      "label": "日常抽象"
+    },
+    {
+      "id": "t2",
+      "range": [
+        10,
+        100
+      ],
+      "weight": 30,
+      "label": "深度发疯"
+    },
+    {
+      "id": "t3",
+      "range": [
+        100,
+        500
+      ],
+      "weight": 9,
+      "label": "史诗抽象"
+    },
+    {
+      "id": "t4",
+      "range": [
+        500,
+        1000
+      ],
+      "weight": 1,
+      "label": "精神状态极不美丽(传说)"
+    }
   ],
   "events": [
     {
@@ -20,7 +52,33 @@
         "[02:14] 你的骷髅兵在地下城和哥布林打了一夜牌，赢回 {gold} 金币。",
         "（哥布林已签署还款协议，分60期，利息另算。）"
       ],
-      "reward": { "kind": "goldMult", "mult": 5 }
+      "reward": {
+        "kind": "goldMult",
+        "mult": 5
+      },
+      "choices": [
+        {
+          "text": "梭哈！把整晚战利品押上桌",
+          "kind": "gamble",
+          "chance": 0.5,
+          "win": {
+            "kind": "goldMult",
+            "mult": 40,
+            "log": "河牌开出同花！哥布林当场昏厥，你扫走全场"
+          },
+          "lose": {
+            "kind": "goldLoss",
+            "rate": 0.5,
+            "log": "哥布林亮出三条A。它打牌居然是算命的。"
+          }
+        },
+        {
+          "text": "见好就收，连夜跑路",
+          "kind": "goldMult",
+          "mult": 6,
+          "log": "你抱着筹码消失在夜色里。哥布林骂骂咧咧，但还款协议还得继续履行。"
+        }
+      ]
     },
     {
       "id": "evt_altar_snack",
@@ -29,7 +87,28 @@
         "[03:40] 路过深渊祭坛，顺手把魔王的贡品偷吃了。全属性暴涨 {mult}。",
         "魔王表示根本不记得贡品里有什么。"
       ],
-      "reward": { "kind": "buff", "zone": "allDmg", "mult": 50, "durationSec": 600 }
+      "reward": {
+        "kind": "buff",
+        "zone": "allDmg",
+        "mult": 50,
+        "durationSec": 600
+      },
+      "choices": [
+        {
+          "text": "吃干抹净，把盘子也舔了",
+          "kind": "buff",
+          "zone": "allDmg",
+          "mult": 100,
+          "durationSec": 300,
+          "log": "贡品能量暴走，全属性 ×100（5分钟）。魔王：谁动了我的人参果？！"
+        },
+        {
+          "text": "只吃一半，剩下的摆回原样",
+          "kind": "goldMult",
+          "mult": 30,
+          "log": "细水长流的偷吃才是可持续摸鱼。获得 {gold} 金币。"
+        }
+      ]
     },
     {
       "id": "evt_bad_review_resign",
@@ -38,7 +117,33 @@
         "[04:05] 键盘诗人给深渊领主写了篇800字小作文。领主看完当场辞职，",
         "掉落装备 ×3，并留下遗言：你们这个团队太卷了。"
       ],
-      "reward": { "kind": "goldMult", "mult": 80 }
+      "reward": {
+        "kind": "goldMult",
+        "mult": 80
+      },
+      "choices": [
+        {
+          "text": "把小作文发到全深渊论坛",
+          "kind": "gamble",
+          "chance": 0.7,
+          "win": {
+            "kind": "goldMult",
+            "mult": 120,
+            "log": "帖子爆火！深渊网友打赏如潮水"
+          },
+          "lose": {
+            "kind": "goldLoss",
+            "rate": 0.3,
+            "log": "领主的律师函比帖子先到。深渊司法体系反应惊人地快。"
+          }
+        },
+        {
+          "text": "私下只发给领主本人",
+          "kind": "goldMult",
+          "mult": 60,
+          "log": "领主看完当场辞职，临走前把保险柜密码留给了你。"
+        }
+      ]
     },
     {
       "id": "evt_demon_team_building",
@@ -47,7 +152,28 @@
         "[05:22] 恶魔团建，全员喝多。趁乱搜刮宝箱 ×7，顺手把团建横幅",
         "「本季度血祭KPI完成率120%」撕下来做了件披风。"
       ],
-      "reward": { "kind": "buff", "zone": "goldGain", "mult": 100, "durationSec": 900 }
+      "reward": {
+        "kind": "buff",
+        "zone": "goldGain",
+        "mult": 100,
+        "durationSec": 900
+      },
+      "choices": [
+        {
+          "text": "宝箱全搜，横幅披风也要",
+          "kind": "buff",
+          "zone": "goldGain",
+          "mult": 150,
+          "durationSec": 900,
+          "log": "披风上身，恶魔团建群对你禁言。金币获取 ×150（15分钟）。"
+        },
+        {
+          "text": "只偷横幅，宝箱留给同事",
+          "kind": "goldMult",
+          "mult": 50,
+          "log": "同事恶魔感动落泪，纷纷用金币感谢你的不搜之恩。"
+        }
+      ]
     },
     {
       "id": "evt_angel_service_call",
@@ -56,7 +182,37 @@
         "[06:00] 天使客服来电：亲亲，您的堕落申请已通过审核哦～",
         "获得【堕落者积分】，可兑换免下坠套餐（已自动兑换）。"
       ],
-      "reward": { "kind": "buff", "zone": "offlineGain", "mult": 50, "durationSec": 1800 }
+      "reward": {
+        "kind": "buff",
+        "zone": "offlineGain",
+        "mult": 50,
+        "durationSec": 1800
+      },
+      "choices": [
+        {
+          "text": "接受堕落套餐（含小食）",
+          "kind": "buff",
+          "zone": "offlineGain",
+          "mult": 80,
+          "durationSec": 1800,
+          "log": "堕落者积分到账，离线收益 ×80（30分钟）。天堂那边显示「该用户已注销」。"
+        },
+        {
+          "text": "反手举报天使接私活",
+          "kind": "gamble",
+          "chance": 0.6,
+          "win": {
+            "kind": "goldMult",
+            "mult": 150,
+            "log": "举报属实！天使被调去前台，举报奖金丰厚"
+          },
+          "lose": {
+            "kind": "goldLoss",
+            "rate": 0.4,
+            "log": "天使反手甩出你的工牌照片：「亲，黑证据我们是专业的」"
+          }
+        }
+      ]
     },
     {
       "id": "evt_raise_denied",
@@ -65,7 +221,12 @@
         "[07:31] 骷髅兵工号033申请调薪被拒，愤怒转化为攻击力 ×{mult}。",
         "HR恶魔在本子上记了一笔：该员工情绪不稳定，建议重用。"
       ],
-      "reward": { "kind": "buff", "zone": "atk", "mult": 30, "durationSec": 300 }
+      "reward": {
+        "kind": "buff",
+        "zone": "atk",
+        "mult": 30,
+        "durationSec": 300
+      }
     },
     {
       "id": "evt_insomnia_totem",
@@ -74,7 +235,12 @@
         "[08:45] 系统检测到你一夜没睡，赠送圣物【黑眼圈图腾】。",
         "图腾铭文：疲惫就是力量。"
       ],
-      "reward": { "kind": "buff", "zone": "atkSpeed", "mult": 10, "durationSec": 600 }
+      "reward": {
+        "kind": "buff",
+        "zone": "atkSpeed",
+        "mult": 10,
+        "durationSec": 600
+      }
     },
     {
       "id": "evt_queue_jump",
@@ -83,7 +249,10 @@
         "[01:07] 一只史莱姆试图插队进本层刷怪队列，被全员用眼神物理超度。",
         "战利品按遗产法分配完毕。"
       ],
-      "reward": { "kind": "goldMult", "mult": 3 }
+      "reward": {
+        "kind": "goldMult",
+        "mult": 3
+      }
     },
     {
       "id": "evt_boss_ppt",
@@ -92,7 +261,10 @@
         "[11:11] 万魔殿会议室泄压，魔王废弃的季度汇报PPT飘落战场。",
         "页页都是「赋能」「闭环」「抓手」。敌人看不懂，但大受震撼，全体眩晕并掉落 {gold} 金币。"
       ],
-      "reward": { "kind": "goldMult", "mult": 300 }
+      "reward": {
+        "kind": "goldMult",
+        "mult": 300
+      }
     },
     {
       "id": "evt_god_watching_drama",
@@ -101,7 +273,12 @@
         "[13:37] 你摸进了神座摸鱼间。神明正在追剧，没空理你。",
         "顺手拿走了供桌上的神格零食，全属性 ×{mult}。神：算了懒得追责。"
       ],
-      "reward": { "kind": "buff", "zone": "allDmg", "mult": 400, "durationSec": 1200 }
+      "reward": {
+        "kind": "buff",
+        "zone": "allDmg",
+        "mult": 400,
+        "durationSec": 1200
+      }
     },
     {
       "id": "evt_bard_emoji",
@@ -110,7 +287,28 @@
         "[03:03] 键盘诗人往敌方频道发了个「微笑」表情。",
         "敌人集体破防，开始互相写小作文。"
       ],
-      "reward": { "kind": "buff", "zone": "critChance", "mult": 20, "durationSec": 120 }
+      "reward": {
+        "kind": "buff",
+        "zone": "critChance",
+        "mult": 20,
+        "durationSec": 120
+      },
+      "choices": [
+        {
+          "text": "再补一个【捂脸】",
+          "kind": "buff",
+          "zone": "critChance",
+          "mult": 30,
+          "durationSec": 180,
+          "log": "敌方频道集体破防，破绽百出，暴击率 ×30（3分钟）。"
+        },
+        {
+          "text": "直接开团：三千字檄文连夜赶出",
+          "kind": "goldMult",
+          "mult": 25,
+          "log": "檄文发完，敌人排队打赏求你别写了。"
+        }
+      ]
     },
     {
       "id": "evt_mine_shift_swap",
@@ -119,7 +317,10 @@
         "[22:00] 深渊矿场夜班交班。白班小鬼偷懒时间被折算成了 {gold} 金币绩效。",
         "打卡机对此表示欣慰。"
       ],
-      "reward": { "kind": "goldMult", "mult": 6 }
+      "reward": {
+        "kind": "goldMult",
+        "mult": 6
+      }
     },
     {
       "id": "evt_necro_contract_renew",
@@ -128,7 +329,10 @@
         "[00:00] 资本家死灵法师与恶魔工会完成年度续约：薪资不变，工时翻倍。",
         "恶魔们含泪挖出了 {gold} 金币的矿产资源。"
       ],
-      "reward": { "kind": "goldMult", "mult": 150 }
+      "reward": {
+        "kind": "goldMult",
+        "mult": 150
+      }
     },
     {
       "id": "evt_goblin_wedding",
@@ -137,7 +341,33 @@
         "[18:88] 被你打爆过的哥布林家族办喜事，给你发了请帖。",
         "随了2金币份子钱，回礼是一整箱战利品。礼尚往来，深渊传统。"
       ],
-      "reward": { "kind": "goldMult", "mult": 60 }
+      "reward": {
+        "kind": "goldMult",
+        "mult": 60
+      },
+      "choices": [
+        {
+          "text": "随个大份子（当前金币的10%）",
+          "kind": "gamble",
+          "chance": 0.65,
+          "win": {
+            "kind": "goldMult",
+            "mult": 200,
+            "log": "哥布林家族感念大恩，回礼直接用马车拉"
+          },
+          "lose": {
+            "kind": "goldLoss",
+            "rate": 0.15,
+            "log": "份子钱随完，主人家还问你要了打车费。"
+          }
+        },
+        {
+          "text": "随 2 金币，礼数到位就行",
+          "kind": "goldMult",
+          "mult": 8,
+          "log": "哥布林规矩：随2币不嫌少，回礼按人头算。礼尚往来，深渊传统。"
+        }
+      ]
     },
     {
       "id": "evt_table_flip_rehearsal",
@@ -146,7 +376,13 @@
         "[99:99] 你对着空气练习掀桌子，结果把本时间线的桌子真掀了。",
         "魔王赔了一笔精神损失费，当前全属性 ×{mult}，持续到下次转生。"
       ],
-      "reward": { "kind": "buff", "zone": "allDmg", "mult": 1000, "durationSec": 999999, "log": "本局所有乘区 ×1000（转生前有效）" }
+      "reward": {
+        "kind": "buff",
+        "zone": "allDmg",
+        "mult": 1000,
+        "durationSec": 999999,
+        "log": "本局所有乘区 ×1000（转生前有效）"
+      }
     },
     {
       "id": "evt_dev_nerf_letter",
@@ -155,7 +391,39 @@
         "[04:44] 策划的平衡性补丁在路上丢了，被深渊邮差捡到并塞进了你的宝箱。",
         "里面是一张手写纸条：本次加强 ×{mult}，别声张。"
       ],
-      "reward": { "kind": "buff", "zone": "allDmg", "mult": 800, "durationSec": 3600 }
+      "reward": {
+        "kind": "buff",
+        "zone": "allDmg",
+        "mult": 800,
+        "durationSec": 3600
+      },
+      "choices": [
+        {
+          "text": "偷偷用掉，别声张",
+          "kind": "buff",
+          "zone": "allDmg",
+          "mult": 800,
+          "durationSec": 3600,
+          "log": "纸条生效：全属性 ×800（1小时）。你体验到了策划失去的良心。"
+        },
+        {
+          "text": "发到深渊群里炫耀",
+          "kind": "gamble",
+          "chance": 0.5,
+          "win": {
+            "kind": "buff",
+            "zone": "allDmg",
+            "mult": 2000,
+            "durationSec": 60,
+            "log": "全深渊接力转发，能量共振 ×2000（60秒）！"
+          },
+          "lose": {
+            "kind": "goldLoss",
+            "rate": 0.6,
+            "log": "全服都在蹭你的buff，维护费全算你头上。"
+          }
+        }
+      ]
     },
     {
       "id": "evt_skeleton_union",
@@ -164,7 +432,12 @@
         "[16:16] 骷髅兵工会集体谈判成功：每周三下午带薪发呆。",
         "发呆期间灵界能量意外充沛，离线收益模型 ×{mult} 修正。"
       ],
-      "reward": { "kind": "buff", "zone": "offlineGain", "mult": 250, "durationSec": 7200 }
+      "reward": {
+        "kind": "buff",
+        "zone": "offlineGain",
+        "mult": 250,
+        "durationSec": 7200
+      }
     },
     {
       "id": "evt_leek_blessing",
@@ -173,7 +446,12 @@
         "[05:55] 深渊农田丰收。大葱之神(自封的)赐福：攻击 ×{mult}，",
         "代价是接下来1小时所有暴击数字都变成绿色葱花。"
       ],
-      "reward": { "kind": "buff", "zone": "atk", "mult": 40, "durationSec": 3600 }
+      "reward": {
+        "kind": "buff",
+        "zone": "atk",
+        "mult": 40,
+        "durationSec": 3600
+      }
     }
   ]
 }

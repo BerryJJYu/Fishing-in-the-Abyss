@@ -1,0 +1,133 @@
+{
+  "meta": {
+    "table": "gear_system",
+    "version": "1.0",
+    "game": "深渊摸鱼录",
+    "aligned_doc": "步骤1-装备与槽位强化体系设计.md",
+    "notes": "装备系统配置：6品质/词条池/槽位/强化/分解。词条数值公式 = 基础值 × 品质随机系数c × (1+ilvl/10)，主词条=P，副词条=P^0.6；特效词条倍率固定。sp_summon_dev 的 trueDmg 效果类型为步骤3新增（应用层需实现）"
+  },
+  "quality": [
+    { "id": "white",  "name": "破烂白装",       "color": "#c8c8c8", "dropWeight": 45,   "bossWeight": 30,   "affixCount": [1, 1], "q": 1,   "coeff": [1, 1.2] },
+    { "id": "blue",   "name": "凑合蓝装",       "color": "#6c9cff", "dropWeight": 30,   "bossWeight": 32,   "affixCount": [2, 2], "q": 1.5, "coeff": [1.5, 2.5] },
+    { "id": "yellow", "name": "黄金稀世",       "color": "#ffd700", "dropWeight": 16,   "bossWeight": 20,   "affixCount": [3, 3], "q": 2,   "coeff": [3, 6] },
+    { "id": "ancient","name": "暗金传说",       "color": "#bf642f", "dropWeight": 7,    "bossWeight": 12,   "affixCount": [4, 4], "q": 3,   "coeff": [8, 20] },
+    { "id": "primal", "name": "远古太古",       "color": "#ff3c3c", "dropWeight": 1.9,  "bossWeight": 5.9,  "affixCount": [5, 5], "q": 4,   "coeff": [25, 60] },
+    { "id": "chaos",  "name": "混沌乐子人神装", "color": "#3cff9e", "dropWeight": 0.1,  "bossWeight": 0.1,  "affixCount": [6, 6], "q": 6,   "coeff": [80, 250] }
+  ],
+  "slots": {
+    "weapon":  { "name": "武器槽", "mult": "×(1+0.1lv) 封顶15级" },
+    "armor":   { "name": "防具槽", "mult": "×(1+0.1lv) 封顶15级" },
+    "trinket": { "name": "饰品槽", "mult": "×(1+0.1lv) 封顶15级" }
+  },
+  "basicAffixes": {
+    "atk":        { "base": 1.3,  "text": "攻击强化",   "zone": "atk",        "slotWeights": { "weapon": 5, "armor": 1, "trinket": 1 } },
+    "atkSpeed":   { "base": 1.15, "text": "攻速强化",   "zone": "atkSpeed",   "slotWeights": { "weapon": 1, "armor": 1, "trinket": 3 } },
+    "critChance": { "base": 1.1,  "text": "暴击率",     "zone": "critChance", "slotWeights": { "weapon": 1, "armor": 1, "trinket": 3 } },
+    "critMult":   { "base": 1.2,  "text": "暴伤",       "zone": "critMult",   "slotWeights": { "weapon": 2, "armor": 1, "trinket": 2 } },
+    "goldGain":   { "base": 1.3,  "text": "金币贪婪",   "zone": "goldGain",   "slotWeights": { "weapon": 1, "armor": 4, "trinket": 1 } },
+    "offlineGain":{ "base": 1.5,  "text": "深渊吸金",   "zone": "offlineGain","slotWeights": { "weapon": 1, "armor": 4, "trinket": 1 } },
+    "bossDmg":    { "base": 1.4,  "text": "Boss专精",   "zone": "bossDmg",    "slotWeights": { "weapon": 2, "armor": 1, "trinket": 1 } }
+  },
+  "specialAffixes": [
+    {
+      "id": "sp_summon_dev", "name": "召唤策划挨打", "minQuality": "ancient",
+      "text": "每次攻击 5% 概率召唤策划出来挨打，受到 5000% 攻击力的真实伤害",
+      "mult": 50,
+      "effects": [ { "type": "proc", "chance": 0.05, "effect": { "kind": "trueDmg", "mult": 50, "log": "策划被召唤出来挨打：啊——这也在平衡范围内！" } } ],
+      "slotWeights": { "weapon": 4, "armor": 1, "trinket": 1 }
+    },
+    {
+      "id": "sp_long_name", "name": "长名猎手", "minQuality": "ancient",
+      "text": "对名字超过 8 字的 Boss 伤害 ×9999（专治史诗感）",
+      "mult": 9999,
+      "effects": [ { "type": "conditional", "condition": { "bossNameMinLength": 8 }, "zone": "bossDmg", "mult": 9999 } ],
+      "slotWeights": { "weapon": 3, "armor": 1, "trinket": 2 }
+    },
+    {
+      "id": "sp_leek", "name": "大葱显圣", "minQuality": "blue",
+      "text": "攻击 ×500，武器外观变成一根带须大葱",
+      "mult": 500, "cosmetic": "leek",
+      "effects": [ { "type": "always", "zone": "atk", "mult": 500 } ],
+      "slotWeights": { "weapon": 5, "armor": 1, "trinket": 1 }
+    },
+    {
+      "id": "sp_reply_all", "name": "群聊收到体", "minQuality": "yellow",
+      "text": "每次击杀向深渊群发「收到」，全乘区 ×300 持续 10 秒",
+      "mult": 300,
+      "effects": [ { "type": "proc", "chance": 1.0, "effect": { "kind": "buff", "zone": "atk", "mult": 300, "durationSec": 10, "log": "深渊群弹出99+条消息：收到 收到 收到" } } ],
+      "slotWeights": { "weapon": 2, "armor": 1, "trinket": 3 }
+    },
+    {
+      "id": "sp_existential", "name": "人生怀疑波", "minQuality": "yellow",
+      "text": "每次攻击 5% 概率让 Boss 陷入对人生的深度怀疑（眩晕 3 秒）",
+      "mult": 10,
+      "effects": [ { "type": "proc", "chance": 0.05, "effect": { "kind": "stun", "durationSec": 3, "log": "Boss头顶冒出气泡：我这么多年的KPI到底为了什么……" } } ],
+      "slotWeights": { "weapon": 2, "armor": 1, "trinket": 3 }
+    },
+    {
+      "id": "sp_execute", "name": "下岗执行令", "minQuality": "primal",
+      "text": "每次攻击，血量低于30%的敌人直接下岗",
+      "mult": 20,
+      "effects": [ { "type": "proc", "chance": 1.0, "effect": { "kind": "execute", "threshold": 0.3, "log": "《深渊职场生存报告》已群发" } } ],
+      "slotWeights": { "weapon": 3, "armor": 1, "trinket": 2 }
+    },
+    {
+      "id": "sp_mini_flip", "name": "小型掀桌", "minQuality": "ancient",
+      "text": "每 60 秒自动小型掀桌，全乘区 ×10 持续 5 秒",
+      "mult": 10,
+      "effects": [ { "type": "proc", "chance": 1.0, "periodSec": 60, "effect": { "kind": "globalMult", "mult": 10, "durationSec": 5, "log": "（桌子碎裂声）魔王：又掀？！" } } ],
+      "slotWeights": { "weapon": 2, "armor": 2, "trinket": 2 }
+    },
+    {
+      "id": "sp_goblin_debt", "name": "哥布林讨债", "minQuality": "blue",
+      "text": "附带哥布林的欠条，金币获取 ×8",
+      "mult": 8,
+      "effects": [ { "type": "always", "zone": "goldGain", "mult": 8 } ],
+      "slotWeights": { "weapon": 1, "armor": 4, "trinket": 2 }
+    },
+    {
+      "id": "sp_mood_reactor", "name": "情绪永动机", "minQuality": "chaos",
+      "text": "攻击 ×1000，转化率违反能量守恒",
+      "mult": 1000,
+      "effects": [ { "type": "always", "zone": "atk", "mult": 1000 } ],
+      "slotWeights": { "weapon": 5, "armor": 1, "trinket": 1 }
+    },
+    {
+      "id": "sp_glitch", "name": "质检员的错别字", "minQuality": "chaos",
+      "text": "属性：策划忘填了。效果：也忘了。但它是彩色的。（每日随机重摇）",
+      "mult": 5, "dailyReroll": true,
+      "effects": [ { "type": "always", "zone": "allDmg", "mult": 5 } ],
+      "slotWeights": { "weapon": 1, "armor": 1, "trinket": 1 }
+    }
+  ],
+  "enhance": {
+    "maxLevel": 15,
+    "slotMultPerLevel": 0.10,
+    "successRate": 0.85,
+    "pityAfterFails": 2,
+    "critChance": 0.10,
+    "scrapCost": "9 * ceil(3 * 1.9^lv) 碎屑",
+    "goldCost": "zoneGold(10 + lv * 6)",
+    "formulaDoc": "槽位属性倍率 = ×(1 + 0.10 × 强化等级)，满级15级 = ×2.5"
+  },
+  "salvage": {
+    "unit": "碎屑（粉尘=9碎屑，精华=81碎屑）",
+    "byQuality": { "white": 1, "blue": 3, "yellow": 9, "ancient": 81, "primal": 405, "chaos": 1620 }
+  },
+  "nameGen": {
+    "adj": {
+      "white":  ["破烂的", "锈迹斑斑的", "谁扔这的", "打折区捞的"],
+      "blue":   ["凑合的", "某亡灵的", "二手九成新", "清仓尾货"],
+      "yellow": ["稀世的", "镀金的", "传说（自封）", "鉴定为真（大概）"],
+      "ancient":["深渊认证", "魔工坊出品", "魔王同款", "地狱精工"],
+      "primal": ["远古", "禁忌", "开天", "太古遗物"],
+      "chaos":  ["混沌", "???", "乱码的", "崩坏的"]
+    },
+    "noun": {
+      "weapon":  ["木棒", "大葱", "锈剑", "键盘", "肝（自己的）"],
+      "armor":   ["围裙", "横幅披风", "病号服", "西服（皱的）"],
+      "trinket": ["工牌", "哥布林欠条", "黑眼圈", "打卡机", "戒指（辞职群）"]
+    },
+    "suffix": ["·超度特化", "·摸鱼认证", "·KPI之怒", "·带薪", "·深渊限定", "·过期不候"]
+  }
+}
