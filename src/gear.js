@@ -180,7 +180,52 @@
       return out;
     }
 
-    return { rollItem, computeGS, salvageValue, dropDisposition, slotMult, scrapCost, goldCost, enhanceRoll, itemEffects, rollQuality, QUALITY: Q, SPECIALS: SP };
+    // ---------- 重铸: 保留品质/槽位/ilvl/特效词条, 重摇基础词条选择与数值 ----------
+    function reforge(item, rng) {
+      rng = rng || Math.random;
+      const q = Q[item.quality];
+      const [cMin, cMax] = q.coeff;
+      const c = cMin + rng() * (cMax - cMin);
+      const P = c * (1 + item.ilvl / 10);
+      const keepSpecial = item.affixes.filter(a => a.kind === 'special');
+      const usedBasic = [];
+      const newAffixes = [];
+      // 主词条
+      const pKey = pickBasicAffix(item.slot, usedBasic, rng);
+      usedBasic.push(pKey);
+      newAffixes.push({ key: pKey, kind: 'basic', mult: P, effects: [{ type: 'always', zone: BASIC[pKey].zone, mult: P }] });
+      // 副词条数量 = 原基础词条数(不含特效) - 1 … 按品质档重定
+      const basicTotal = item.affixes.length - keepSpecial.length;
+      for (let i = 1; i < basicTotal; i++) {
+        const key = pickBasicAffix(item.slot, usedBasic, rng);
+        usedBasic.push(key);
+        const subMult = Math.pow(P, 0.6);
+        newAffixes.push({ key, kind: 'basic', mult: subMult, effects: [{ type: 'always', zone: BASIC[key].zone, mult: subMult }] });
+      }
+      // 特效词条回填
+      for (const sp of keepSpecial) newAffixes.push(sp);
+      const ni = Object.assign({}, item, { affixes: newAffixes, power: P });
+      ni.gs = computeGS(ni);
+      return ni;
+    }
+    const ELITE_AFFIXES = [
+      { id: 'tough',  name: '坚韧', desc: '血量 ×2' },
+      { id: 'greedy', name: '贪婪', desc: '金币 ×2' },
+      { id: 'swift',  name: '迅捷', desc: '你的攻速 -20%' },
+      { id: 'shield', name: '护盾', desc: '血量高于50%时受伤减半' },
+    ];
+    function rollElite(rng) {
+      rng = rng || Math.random;
+      const pool = ELITE_AFFIXES.slice();
+      const n = 1 + (rng() < 0.35 ? 1 : 0);
+      const affixes = [];
+      for (let i = 0; i < n && pool.length; i++) {
+        const k = Math.floor(rng() * pool.length);
+        affixes.push(pool.splice(k, 1)[0].id);
+      }
+      return { affixes, hpMult: affixes.includes('tough') ? 4 : 2, goldMult: affixes.includes('greedy') ? 4 : 2 };
+    }
+    return { rollItem, computeGS, salvageValue, dropDisposition, slotMult, scrapCost, goldCost, enhanceRoll, itemEffects, rollQuality, QUALITY: Q, SPECIALS: SP, reforge, ELITE_AFFIXES, rollElite };
   }
 
   const api = { createGearSystem };
